@@ -1,3 +1,10 @@
+﻿using DongThapHelpdesk.Api.Configurations;
+using DongThapHelpdesk.Api.Data;
+using DongThapHelpdesk.Api.Repositories;
+using DongThapHelpdesk.Api.Services;
+using Microsoft.OpenApi;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Conventions;
 
 namespace DongThapHelpdesk.Api
 {
@@ -7,25 +14,45 @@ namespace DongThapHelpdesk.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // ── MongoDB Settings ──────────────────────────────────────
+            var mongoSettings = builder.Configuration
+                .GetSection("MongoDbSettings")
+                .Get<MongoDbSettings>()!;
 
+            // ── MongoDB Global Conventions ────────────────────────────
+            var conventionPack = new ConventionPack
+            {
+                new EnumRepresentationConvention(BsonType.String),
+                new CamelCaseElementNameConvention()
+            };
+            ConventionRegistry.Register("GlobalConventions", conventionPack, _ => true);
+
+            builder.Services.AddSingleton(mongoSettings);
+            builder.Services.AddSingleton<MongoDbContext>();
+
+            // ── Repositories ──────────────────────────────────────────
+            builder.Services.AddSingleton<TicketRepository>();
+
+            // ── Services ──────────────────────────────────────────────
+            builder.Services.AddSingleton<TicketService>();
+
+
+            // ── Swagger + Controllers ─────────────────────────────────
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // ── Middleware Pipeline ───────────────────────────────────
             if (app.Environment.IsDevelopment())
             {
-                app.MapOpenApi();
+                app.UseSwagger();
+                app.UseSwaggerUI();
             }
 
             app.UseAuthorization();
-
-
             app.MapControllers();
-
             app.Run();
         }
     }
