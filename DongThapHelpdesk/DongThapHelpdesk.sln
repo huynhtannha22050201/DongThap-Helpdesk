@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37111.16 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DongThapHelpdesk.Api", "DongThapHelpdesk.Api\DongThapHelpdesk.Api.csproj", "{1B7C5C8A-0F24-490F-8FC8-B9097080299A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1B7C5C8A-0F24-490F-8FC8-B9097080299A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B7C5C8A-0F24-490F-8FC8-B9097080299A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B7C5C8A-0F24-490F-8FC8-B9097080299A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B7C5C8A-0F24-490F-8FC8-B9097080299A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EAE87C07-AF0C-44C5-8785-5473ABA0EFD7}
+	EndGlobalSection
+EndGlobal
