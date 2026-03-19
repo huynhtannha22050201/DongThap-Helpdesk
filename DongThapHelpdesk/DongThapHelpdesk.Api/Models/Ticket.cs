@@ -1,30 +1,32 @@
-﻿using DongThapHelpdesk.Api.Attributes;
-using DongThapHelpdesk.Api.Enums;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using DongThapHelpdesk.Api.Attributes;
+using DongThapHelpdesk.Api.Enums;
+
+namespace DongThapHelpdesk.Api.Models;
 
 [BsonCollection("tickets")]
 public class Ticket
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; }
-    public string TicketCode { get; set; } // e.g. PA-032026-001
+    public string Id { get; set; } = null!;
 
-    public string Title { get; set; }
-    public string Description { get; set; }
+    public string TicketCode { get; set; } = null!;
+    public string Title { get; set; } = null!;
+    public string Description { get; set; } = null!;
     public TicketStatus Status { get; set; } = TicketStatus.New;
     public TicketPriority Priority { get; set; } = TicketPriority.Normal;
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string CategoryId { get; set; }
+    public string? CategoryId { get; set; }
 
-    public GeoLocation? Location { get; set; }            // embedded
-    public List<Attachment> Attachments { get; set; } = new(); // embedded
+    public GeoLocation? Location { get; set; }
+    public List<Attachment> Attachments { get; set; } = new();
 
-    // Reporter: either AppUser.Id (registered) or anonymous info
     [BsonRepresentation(BsonType.ObjectId)]
     public string? ReporterId { get; set; }
+
     public string? AnonymousName { get; set; }
     public string? AnonymousPhone { get; set; }
 
@@ -42,19 +44,40 @@ public class Ticket
     public string? RejectionReason { get; set; }
 }
 
-// --- Embedded value objects ---
+// ── GeoJSON chuẩn MongoDB ─────────────────────────────────
 public class GeoLocation
 {
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    [BsonElement("type")]
+    public string Type { get; set; } = "Point";
+    // Luôn là "Point" vì đây là một điểm tọa độ
+
+    [BsonElement("coordinates")]
+    public double[] Coordinates { get; set; } = new double[2];
+    // Theo chuẩn GeoJSON: [longitude, latitude]
+    // Ví dụ: [105.9100, 10.3397]
+    // QUAN TRỌNG: longitude trước, latitude sau
+
+    [BsonElement("address")]
     public string? Address { get; set; }
+    // Địa chỉ văn bản
+    // Ví dụ: "Đường Nguyễn Huệ, TP. Cao Lãnh, Đồng Tháp"
+
+    // Helper properties để code dễ đọc hơn
+    [BsonIgnore]
+    public double Longitude => Coordinates[0];
+    // Truy cập kinh độ: location.Longitude
+
+    [BsonIgnore]
+    public double Latitude => Coordinates[1];
+    // Truy cập vĩ độ: location.Latitude
 }
 
+// ── Attachment ────────────────────────────────────────────
 public class Attachment
 {
-    public string FileName { get; set; }
-    public string Url { get; set; }
-    public string MimeType { get; set; } // image/jpeg, video/mp4, audio/mpeg
+    public string FileName { get; set; } = null!;
+    public string Url { get; set; } = null!;
+    public string MimeType { get; set; } = null!;
     public long SizeBytes { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 }
