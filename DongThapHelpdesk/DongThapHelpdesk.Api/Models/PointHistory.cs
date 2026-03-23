@@ -3,7 +3,7 @@ using DongThapHelpdesk.Api.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace DongThapHelpDesk.Api.Models;
+namespace DongThapHelpdesk.Api.Models;
 
 [BsonCollection("point_histories")]
 public class PointHistory

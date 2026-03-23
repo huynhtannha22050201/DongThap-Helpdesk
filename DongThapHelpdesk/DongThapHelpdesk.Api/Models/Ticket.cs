@@ -24,11 +24,37 @@ public class Ticket
     public GeoLocation? Location { get; set; }
     public List<Attachment> Attachments { get; set; } = new();
 
+    // ── Thông tin người báo cáo ───────────────────────────
     [BsonRepresentation(BsonType.ObjectId)]
     public string? ReporterId { get; set; }
+    // Có giá trị sau khi tài khoản được tạo tự động
 
-    public string? AnonymousName { get; set; }
-    public string? AnonymousPhone { get; set; }
+    public string ReporterName { get; set; } = null!;
+    // Họ tên người báo cáo — lưu lại dù có tài khoản hay không
+
+    public string ReporterPhone { get; set; } = null!;
+    // SĐT người báo cáo — dùng để tạo tài khoản
+
+    public string? ReporterAddress { get; set; } = null!;
+    // Địa chỉ người báo cáo
+
+    public string? ReporterWard { get; set; }
+    // Phường/Xã người báo cáo
+
+    public string? ReporterDistrict { get; set; }
+    // Quận/Huyện người báo cáo
+
+    public bool IsAccountCreated { get; set; } = false;
+    // true = đã tạo tài khoản cho người báo cáo
+    // false = chưa tạo hoặc đã có tài khoản rồi
+
+    // ── Thông tin xử lý ───────────────────────────────────
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string? ReviewedByDispatcherId { get; set; }
+    // ID Dispatcher đã kiểm duyệt ticket
+
+    public DateTime? ReviewedAt { get; set; }
+    // Thời điểm Dispatcher kiểm duyệt
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string? AssignedDepartmentId { get; set; }
@@ -36,12 +62,16 @@ public class Ticket
     [BsonRepresentation(BsonType.ObjectId)]
     public string? AssignedUserId { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public int SlaHours { get; set; } = 72;
+    // Số giờ SLA áp dụng
+    // Lấy từ SlaPolicy của Category
+
     public DateTime? SlaDeadline { get; set; }
     public bool IsSlaBreached { get; set; } = false;
     public DateTime? ClosedAt { get; set; }
     public string? RejectionReason { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 // ── GeoJSON chuẩn MongoDB ─────────────────────────────────

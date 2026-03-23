@@ -1,6 +1,4 @@
-﻿using BCrypt.Net;
-using DongThapHelpdesk.Api.DTOs.Auth;
-using DongThapHelpdesk.Api.Models;
+﻿using DongThapHelpdesk.Api.DTOs.Auth;
 using DongThapHelpdesk.Api.Repositories;
 
 namespace DongThapHelpdesk.Api.Services;

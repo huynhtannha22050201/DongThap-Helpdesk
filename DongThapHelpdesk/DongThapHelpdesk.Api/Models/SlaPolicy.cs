@@ -2,6 +2,8 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
+namespace DongThapHelpdesk.Api.Models;
+
 [BsonCollection("sla_policies")]
 public class SlaPolicy
 {

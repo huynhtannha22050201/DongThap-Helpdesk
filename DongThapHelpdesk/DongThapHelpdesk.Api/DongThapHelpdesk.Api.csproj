@@ -14,5 +14,11 @@
     <PackageReference Include="MongoDB.Driver" Version="3.7.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
   </ItemGroup>
+	                            
+
+  <ItemGroup>
+    <Folder Include="wwwroot\uploads\results\" />
+    <Folder Include="wwwroot\uploads\tickets\" />
+  </ItemGroup>
 
 </Project>

@@ -1,6 +1,5 @@
 ﻿using DongThapHelpdesk.Api.Data;
 using DongThapHelpdesk.Api.Models;
-using DongThapHelpDesk.Api.Models;
 using MongoDB.Driver;
 
 namespace DongThapHelpdesk.Api.Repositories;

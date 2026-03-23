@@ -1,6 +1,5 @@
 ﻿using DongThapHelpdesk.Api.DTOs.Auth;
 using DongThapHelpdesk.Api.Services;
-using DongThapHelpdesk.Api.DTOs.Auth;
 using DongThapHelpdesk.Api.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,6 +49,7 @@ public class AuthController : ControllerBase
         {
             result.Success,
             result.Message,
+            result.Token,
             result.User
         });
     }

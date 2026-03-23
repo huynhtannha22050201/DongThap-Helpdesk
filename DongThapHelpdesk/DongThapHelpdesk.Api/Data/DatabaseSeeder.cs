@@ -22,6 +22,7 @@ public class DatabaseSeeder
         await _database.DropCollectionAsync("incident_categories");
         await _database.DropCollectionAsync("sla_policies");
         await _database.DropCollectionAsync("holidays");
+        await _database.DropCollectionAsync("departments");
         Console.WriteLine("✓ Đã xóa toàn bộ dữ liệu");
     }
 
@@ -32,6 +33,7 @@ public class DatabaseSeeder
         await SeedSlaPoliciesAsync();
         await SeedTicketsAsync();
         await SeedHolidaysAsync();
+        await SeedDepartmentAsync();
     }
 
     // ── 1. Seed Users ─────────────────────────────────────────
@@ -333,7 +335,7 @@ public class DatabaseSeeder
             return;
         }
 
-        // Lấy ID category để gán cho ticket
+        // Lấy ID category
         var categoryCollection = _database
             .GetCollection<IncidentCategory>("incident_categories");
 
@@ -345,7 +347,7 @@ public class DatabaseSeeder
             .Find(c => c.Code == "MT-RAC")
             .FirstOrDefaultAsync();
 
-        // Lấy ID citizen để gán cho ticket
+        // Lấy ID users
         var userCollection = _database
             .GetCollection<AppUser>("users");
 
@@ -357,102 +359,166 @@ public class DatabaseSeeder
             .Find(u => u.PhoneNumber == "0905555555")
             .FirstOrDefaultAsync();
 
+        var dispatcher = await userCollection
+            .Find(u => u.PhoneNumber == "0901111111")
+            .FirstOrDefaultAsync();
+
         var tickets = new List<Ticket>
+    {
+        // ── Ticket 1: New ─────────────────────────────
+        new()
         {
-            // ── Ticket 1: New ─────────────────────────────
-            new()
+            TicketCode = "PA-032026-001",
+            Title = "Ổ gà lớn trên đường Nguyễn Huệ",
+            Description = "Có một ổ gà sâu khoảng 20cm " +
+                "gây nguy hiểm cho người đi xe máy.",
+            Status = TicketStatus.New,
+            Priority = TicketPriority.High,
+            CategoryId = gtOga?.Id,
+            SlaHours = gtOga != null
+                ? gtOga.DefaultSlaHours : 48,
+            Location = new GeoLocation
             {
-                TicketCode = "PA-032026-001",
-                Title = "Ổ gà lớn trên đường Nguyễn Huệ",
-                Description = "Có một ổ gà sâu khoảng 20cm " +
-                    "gây nguy hiểm cho người đi xe máy.",
-                Status = TicketStatus.New,
-                Priority = TicketPriority.High,
-                CategoryId = gtOga?.Id,
-                Location = new GeoLocation
-                {
-                    Type = "Point",
-                    Coordinates = new[] { 105.9100, 10.3397 },
-                    Address = "Đường Nguyễn Huệ, " +
-                        "TP. Cao Lãnh, Đồng Tháp"
-                },
-                Attachments = new List<Attachment>(),
-                ReporterId = citizen1?.Id,
-                IsSlaBreached = false,
-                CreatedAt = DateTime.UtcNow.AddDays(-2),
-                UpdatedAt = DateTime.UtcNow.AddDays(-2)
+                Type = "Point",
+                Coordinates = new[] { 105.9100, 10.3397 },
+                Address = "Đường Nguyễn Huệ, " +
+                    "TP. Cao Lãnh, Đồng Tháp"
             },
+            Attachments = new List<Attachment>(),
 
-            // ── Ticket 2: InProgress ──────────────────────
-            new()
+            // Thông tin người báo cáo
+            ReporterId = citizen1?.Id,
+            ReporterName = "Phạm Văn Em",
+            ReporterPhone = "0904444444",
+            ReporterAddress = "123 Nguyễn Huệ",
+            ReporterWard = "Phường 1",
+            ReporterDistrict = "TP. Cao Lãnh",
+            IsAccountCreated = true,
+
+            // Chưa có Dispatcher xử lý
+            ReviewedByDispatcherId = null,
+            ReviewedAt = null,
+
+            IsSlaBreached = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
+            UpdatedAt = DateTime.UtcNow.AddDays(-2)
+        },
+
+        // ── Ticket 2: InProgress ──────────────────────
+        new()
+        {
+            TicketCode = "PA-032026-002",
+            Title = "Rác thải tràn lan tại chợ Phường 2",
+            Description = "Khu vực chợ Phường 2 có rác " +
+                "thải chưa được thu gom nhiều ngày.",
+            Status = TicketStatus.InProgress,
+            Priority = TicketPriority.Normal,
+            CategoryId = mtRac?.Id,
+            SlaHours = mtRac != null
+                ? mtRac.DefaultSlaHours : 48,
+            Location = new GeoLocation
             {
-                TicketCode = "PA-032026-002",
-                Title = "Rác thải tràn lan tại chợ Phường 2",
-                Description = "Khu vực chợ Phường 2 có rác " +
-                    "thải chưa được thu gom nhiều ngày.",
-                Status = TicketStatus.InProgress,
-                Priority = TicketPriority.Normal,
-                CategoryId = mtRac?.Id,
-                Location = new GeoLocation
-                {
-                    Type = "Point",
-                    Coordinates = new[] { 105.9150, 10.3420 },
-                    Address = "Chợ Phường 2, " +
-                        "TP. Cao Lãnh, Đồng Tháp"
-                },
-                Attachments = new List<Attachment>(),
-                ReporterId = citizen2?.Id,
-                SlaDeadline = DateTime.UtcNow.AddHours(24),
-                IsSlaBreached = false,
-                CreatedAt = DateTime.UtcNow.AddDays(-1),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                Type = "Point",
+                Coordinates = new[] { 105.9150, 10.3420 },
+                Address = "Chợ Phường 2, " +
+                    "TP. Cao Lãnh, Đồng Tháp"
             },
+            Attachments = new List<Attachment>(),
 
-            // ── Ticket 3: Closed ──────────────────────────
-            new()
+            // Thông tin người báo cáo
+            ReporterId = citizen2?.Id,
+            ReporterName = "Võ Thị Phương",
+            ReporterPhone = "0905555555",
+            ReporterAddress = "456 Trần Hưng Đạo",
+            ReporterWard = "Phường 2",
+            ReporterDistrict = "TP. Cao Lãnh",
+            IsAccountCreated = true,
+
+            // Dispatcher đã duyệt
+            ReviewedByDispatcherId = dispatcher?.Id,
+            ReviewedAt = DateTime.UtcNow.AddDays(-1),
+
+            SlaDeadline = DateTime.UtcNow.AddHours(24),
+            IsSlaBreached = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        },
+
+        // ── Ticket 3: Closed ──────────────────────────
+        new()
+        {
+            TicketCode = "PA-032026-003",
+            Title = "Đèn đường hỏng tại hẻm 5",
+            Description = "Đèn đường tại hẻm 5 " +
+                "đường Lý Thường Kiệt bị hỏng 3 ngày.",
+            Status = TicketStatus.Closed,
+            Priority = TicketPriority.Normal,
+            CategoryId = gtOga?.Id,
+            SlaHours = gtOga != null
+                ? gtOga.DefaultSlaHours : 48,
+            Location = new GeoLocation
             {
-                TicketCode = "PA-032026-003",
-                Title = "Đèn đường hỏng tại hẻm 5",
-                Description = "Đèn đường tại hẻm 5 " +
-                    "đường Lý Thường Kiệt bị hỏng 3 ngày.",
-                Status = TicketStatus.Closed,
-                Priority = TicketPriority.Normal,
-                CategoryId = gtOga?.Id,
-                Location = new GeoLocation
-                {
-                    Type = "Point",
-                    Coordinates = new[] { 105.9080, 10.3380 },
-                    Address = "Hẻm 5, Lý Thường Kiệt, " +
-                        "TP. Cao Lãnh, Đồng Tháp"
-                },
-                Attachments = new List<Attachment>(),
-                ReporterId = citizen1?.Id,
-                IsSlaBreached = false,
-                ClosedAt = DateTime.UtcNow.AddHours(-2),
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = DateTime.UtcNow.AddHours(-2)
+                Type = "Point",
+                Coordinates = new[] { 105.9080, 10.3380 },
+                Address = "Hẻm 5, Lý Thường Kiệt, " +
+                    "TP. Cao Lãnh, Đồng Tháp"
             },
+            Attachments = new List<Attachment>(),
 
-            // ── Ticket 4: Rejected ────────────────────────
-            new()
-            {
-                TicketCode = "PA-032026-004",
-                Title = "Test spam",
-                Description = "Báo cáo không hợp lệ",
-                Status = TicketStatus.Rejected,
-                Priority = TicketPriority.Low,
-                CategoryId = mtRac?.Id,
-                Location = null,
-                Attachments = new List<Attachment>(),
-                AnonymousName = "Ẩn danh",
-                AnonymousPhone = "0909999999",
-                IsSlaBreached = false,
-                RejectionReason = "Báo cáo không có " +
-                    "thông tin và hình ảnh minh chứng",
-                CreatedAt = DateTime.UtcNow.AddDays(-3),
-                UpdatedAt = DateTime.UtcNow.AddDays(-3)
-            }
-        };
+            // Thông tin người báo cáo
+            ReporterId = citizen1?.Id,
+            ReporterName = "Phạm Văn Em",
+            ReporterPhone = "0904444444",
+            ReporterAddress = "123 Nguyễn Huệ",
+            ReporterWard = "Phường 1",
+            ReporterDistrict = "TP. Cao Lãnh",
+            IsAccountCreated = true,
+
+            // Dispatcher đã duyệt và đóng
+            ReviewedByDispatcherId = dispatcher?.Id,
+            ReviewedAt = DateTime.UtcNow.AddDays(-5),
+
+            IsSlaBreached = false,
+            ClosedAt = DateTime.UtcNow.AddHours(-2),
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
+            UpdatedAt = DateTime.UtcNow.AddHours(-2)
+        },
+
+        // ── Ticket 4: Rejected ────────────────────────
+        new()
+        {
+            TicketCode = "PA-032026-004",
+            Title = "Test spam",
+            Description = "Báo cáo không hợp lệ",
+            Status = TicketStatus.Rejected,
+            Priority = TicketPriority.Low,
+            CategoryId = mtRac?.Id,
+            SlaHours = 0,
+            // Không áp dụng SLA cho ticket bị từ chối
+            Location = null,
+            Attachments = new List<Attachment>(),
+
+            // Người báo cáo ẩn danh
+            ReporterId = null,
+            ReporterName = "Ẩn danh",
+            ReporterPhone = "0909999999",
+            ReporterAddress = null,
+            ReporterWard = null,
+            ReporterDistrict = null,
+            IsAccountCreated = false,
+            // Không tạo tài khoản vì bị từ chối
+
+            // Dispatcher đã từ chối
+            ReviewedByDispatcherId = dispatcher?.Id,
+            ReviewedAt = DateTime.UtcNow.AddDays(-3),
+
+            IsSlaBreached = false,
+            RejectionReason = "Báo cáo không có " +
+                "thông tin và hình ảnh minh chứng",
+            CreatedAt = DateTime.UtcNow.AddDays(-3),
+            UpdatedAt = DateTime.UtcNow.AddDays(-3)
+        }
+    };
 
         await ticketCollection.InsertManyAsync(tickets);
         Console.WriteLine("✓ Tickets seeded thành công");
@@ -507,5 +573,79 @@ public class DatabaseSeeder
 
         await collection.InsertManyAsync(holidays);
         Console.WriteLine("✓ Holidays seeded thành công");
+    }
+
+    // -─ 6. Seed Departments ───────────────────────────────────
+    private async Task SeedDepartmentAsync()
+    {
+        var collection = _database
+            .GetCollection<Department>("departments");
+
+        if (await collection
+            .CountDocumentsAsync(_ => true) > 0)
+        {
+            Console.WriteLine(
+                "⚠ Departments đã có dữ liệu, bỏ qua seed");
+            return;
+        }
+
+        // Lấy ID Assignee để gán ResponsibleUserId
+        var userCollection = _database
+            .GetCollection<AppUser>("users");
+        var assignee = await userCollection
+            .Find(u => u.PhoneNumber == "0902222222")
+            .FirstOrDefaultAsync();
+
+        var departments = new List<Department>
+    {
+        new()
+        {
+            Name = "Trung tâm Chuyển đổi số Đồng Tháp",
+            Code = "TTCDS",
+            Level = DepartmentLevel.Province,
+            ParentId = null,
+            ResponsibleUserId = null,
+            IsActive = true
+        },
+        new()
+        {
+            Name = "UBND TP. Cao Lãnh",
+            Code = "UBND-CL",
+            Level = DepartmentLevel.District,
+            ParentId = null,
+            ResponsibleUserId = null,
+            IsActive = true
+        },
+        new()
+        {
+            Name = "UBND Phường 1",
+            Code = "UBND-P1",
+            Level = DepartmentLevel.Commune,
+            ParentId = null,
+            ResponsibleUserId = assignee?.Id,
+            IsActive = true
+        },
+        new()
+        {
+            Name = "UBND Phường 2",
+            Code = "UBND-P2",
+            Level = DepartmentLevel.Commune,
+            ParentId = null,
+            ResponsibleUserId = null,
+            IsActive = true
+        },
+        new()
+        {
+            Name = "Phòng Tài nguyên & Môi trường",
+            Code = "TNMT",
+            Level = DepartmentLevel.District,
+            ParentId = null,
+            ResponsibleUserId = null,
+            IsActive = true
+        }
+    };
+
+        await collection.InsertManyAsync(departments);
+        Console.WriteLine("✓ Departments seeded thành công");
     }
 }

@@ -3,6 +3,8 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System.ComponentModel.DataAnnotations;
 
+namespace DongThapHelpdesk.Api.Models;
+
 [BsonCollection("ratings")]
 public class Rating
 {

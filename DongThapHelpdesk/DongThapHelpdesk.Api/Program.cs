@@ -2,15 +2,14 @@
 using DongThapHelpdesk.Api.Data;
 using DongThapHelpdesk.Api.Repositories;
 using DongThapHelpdesk.Api.Services;
-using DongThapHelpdesk.Api.Configurations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Conventions;
 using System.Text;
 using System.Text.Json.Serialization;
-using DongThapHelpDesk.Api.Services;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Features;
+
 
 namespace DongThapHelpdesk.Api
 {
@@ -27,7 +26,11 @@ namespace DongThapHelpdesk.Api
 
             var jwtSettings = builder.Configuration
                 .GetSection("JwtSettings")
-                .Get<JwtSettings>()!;   
+                .Get<JwtSettings>()!;
+
+            var fileUploadSettings = builder.Configuration
+                .GetSection("FileUploadSettings")
+                .Get<FileUploadSettings>();
 
             // ── MongoDB Global Conventions ────────────────────────────
             var conventionPack = new ConventionPack
@@ -39,18 +42,30 @@ namespace DongThapHelpdesk.Api
 
             builder.Services.AddSingleton(mongoSettings);
             builder.Services.AddSingleton(jwtSettings);
+            builder.Services.AddSingleton(fileUploadSettings);
+
             builder.Services.AddSingleton<MongoDbContext>();
 
             // ── Repositories ──────────────────────────────────────────
             builder.Services.AddSingleton<TicketRepository>();
             builder.Services.AddSingleton<UserRepository>();
             builder.Services.AddSingleton<PointHistoryRepository>();
+            builder.Services.AddSingleton<CategoryRepository>();
+            builder.Services.AddSingleton<DepartmentRepository>();
+            builder.Services.AddSingleton<RatingRepository>();
+            builder.Services.AddSingleton<TicketActivityRepository>();
 
             // ── Services ──────────────────────────────────────────────
             builder.Services.AddSingleton<TicketService>();
             builder.Services.AddSingleton<AuthService>();
+            builder.Services.AddSingleton<CategoryService>();
+            builder.Services.AddSingleton<DepartmentService>();
             builder.Services.AddSingleton<JwtTokenService>();
             builder.Services.AddSingleton<PointService>();
+            builder.Services.AddSingleton<SmsService>();
+            builder.Services.AddSingleton<TicketCodeGenerator>();
+            builder.Services.AddSingleton<FileUploadService>();
+            builder.Services.AddSingleton<UserService>();
 
             // ── CORS ──────────────────────────────────────────────────
             builder.Services.AddCors(options =>
@@ -102,6 +117,16 @@ namespace DongThapHelpdesk.Api
 
             builder.Services.AddAuthorization();
 
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 52428800;
+            });
+
+            builder.WebHost.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.Limits.MaxRequestBodySize = 52428800;
+            });
+
             // ── Swagger + Controllers ─────────────────────────────────
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
@@ -125,6 +150,8 @@ namespace DongThapHelpdesk.Api
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
+            app.UseStaticFiles();
 
             app.UseCors("VueApp");
             app.UseAuthentication();    

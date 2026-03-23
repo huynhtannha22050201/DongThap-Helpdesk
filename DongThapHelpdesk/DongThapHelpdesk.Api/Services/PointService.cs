@@ -1,8 +1,8 @@
 ﻿using DongThapHelpdesk.Api.Enums;
 using DongThapHelpdesk.Api.Repositories;
-using DongThapHelpDesk.Api.Models;
+using DongThapHelpdesk.Api.Models;
 
-namespace DongThapHelpDesk.Api.Services;
+namespace DongThapHelpdesk.Api.Services;
 
 public class PointService
 {

@@ -23,6 +23,28 @@ public class UserRepository
             .Find(u => u.Id == id)
             .FirstOrDefaultAsync();
 
+    public async Task<List<AppUser>> GetAllAsync()
+        => await _collection
+            .Find(_ => true)
+            .SortBy(u => u.FullName)
+            .ToListAsync();
+
+    public async Task<List<AppUser>> GetTopByFilterAsync(
+        FilterDefinition<AppUser> filter,
+        SortDefinition<AppUser> sort,
+        int limit)
+        => await _collection
+            .Find(filter)
+            .Sort(sort)
+            .Limit(limit)
+            .ToListAsync();
+
+    public async Task<List<AppUser>> GetByFilterAsync(
+        FilterDefinition<AppUser> filter)
+        => await _collection
+            .Find(filter)
+            .ToListAsync();
+
     public async Task CreateAsync(AppUser user)
         => await _collection.InsertOneAsync(user);
 
@@ -31,6 +53,18 @@ public class UserRepository
             u => u.Id == user.Id, user);
     // Cập nhật toàn bộ thông tin user
     // Dùng khi cập nhật điểm sau mỗi hành động
+
+    public async Task UpdateFieldsAsync(
+        string id,
+        UpdateDefinition<AppUser> update)
+        => await _collection.UpdateOneAsync(
+            u => u.Id == id, update);
+
+    public async Task UpdateManyFieldsAsync(
+        FilterDefinition<AppUser> filter,
+        UpdateDefinition<AppUser> update)
+        => await _collection.UpdateManyAsync(
+            filter, update);
 
     public async Task<List<AppUser>> GetMonthlyLeaderboardAsync(
         int top = 10)

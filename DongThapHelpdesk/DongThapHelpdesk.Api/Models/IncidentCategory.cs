@@ -2,6 +2,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
+namespace DongThapHelpdesk.Api.Models;
 [BsonCollection("incident_categories")]
 public class IncidentCategory
 {
