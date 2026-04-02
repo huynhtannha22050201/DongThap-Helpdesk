@@ -19,6 +19,7 @@ public class TicketService
     private readonly PointService _pointService;
     private readonly TicketCodeGenerator _codeGenerator;
     private readonly FileUploadService _fileUploadService;
+    private readonly NotificationService _notificationService;
 
     public TicketService(
         TicketRepository ticketRepo,
@@ -30,7 +31,8 @@ public class TicketService
         SmsService smsService,
         PointService pointService,
         TicketCodeGenerator codeGenerator,
-        FileUploadService fileUploadService)
+        FileUploadService fileUploadService,
+        NotificationService notificationService)
     {
         _ticketRepo = ticketRepo;
         _userRepo = userRepo;
@@ -42,6 +44,7 @@ public class TicketService
         _pointService = pointService;
         _codeGenerator = codeGenerator;
         _fileUploadService = fileUploadService;
+        _notificationService = notificationService;
     }
 
     // ── Lấy dữ liệu ──────────────────────────────────────
@@ -171,6 +174,17 @@ public class TicketService
             $"Phản ánh mới được gửi lên hệ thống" +
             $"{(attachments.Any() ? $" kèm {attachments.Count} hình ảnh" : "")}");
 
+        var dispatchers = await _userRepo.GetByFilterAsync(
+        Builders<AppUser>.Filter
+            .Eq(u => u.Role, UserRole.Dispatcher));
+
+        await _notificationService.CreateForManyAsync(
+            dispatchers.Select(d => d.Id).ToList(),
+            ticket.Id,
+            NotificationType.NewAssignment,
+            $"Có phản ánh mới [{ticket.TicketCode}]: " +
+            $"{ticket.Title}");
+
         return (true, "Gửi phản ánh thành công",
             await MapToResponseAsync(ticket));
     }
@@ -218,6 +232,14 @@ public class TicketService
             oldStatus,
             ticket.Status,
             "Phản ánh được duyệt hợp lệ");
+
+        if (!string.IsNullOrEmpty(ticket.ReporterId))
+            await _notificationService.CreateAsync(
+                ticket.ReporterId,
+                ticket.Id,
+                NotificationType.StatusChanged,
+                $"Phản ánh [{ticket.TicketCode}] của bạn " +
+                $"đã được tiếp nhận và đang kiểm duyệt");
 
         // Gửi SMS
         await _smsService.SendTicketApprovedAsync(
@@ -306,6 +328,21 @@ public class TicketService
             ticket.Status,
             request.Note ?? $"Giao cho {department.Name}");
 
+        var assignees = await _userRepo.GetByFilterAsync(
+        Builders<AppUser>.Filter.And(
+            Builders<AppUser>.Filter
+                .Eq(u => u.Role, UserRole.Assignee),
+            Builders<AppUser>.Filter
+                .Eq(u => u.DepartmentId,
+                    request.DepartmentId)));
+
+        await _notificationService.CreateForManyAsync(
+            assignees.Select(a => a.Id).ToList(),
+            ticket.Id,
+            NotificationType.NewAssignment,
+            $"Phản ánh [{ticket.TicketCode}] đã được " +
+            $"giao cho đơn vị bạn xử lý");
+
         return (true, "Giao việc thành công");
     }
 
@@ -339,6 +376,15 @@ public class TicketService
             oldStatus,
             ticket.Status,
             "Cán bộ đã tiếp nhận và bắt đầu xử lý");
+
+        // Thêm ở đây
+        if (!string.IsNullOrEmpty(ticket.ReporterId))
+            await _notificationService.CreateAsync(
+                ticket.ReporterId,
+                ticket.Id,
+                NotificationType.StatusChanged,
+                $"Phản ánh [{ticket.TicketCode}] của bạn " +
+                $"đang được xử lý");
 
         return (true, "Tiếp nhận thành công");
     }
@@ -391,6 +437,15 @@ public class TicketService
             request.ResultNote,
             attachmentUrls);
 
+        if (!string.IsNullOrEmpty(
+        ticket.ReviewedByDispatcherId))
+            await _notificationService.CreateAsync(
+                ticket.ReviewedByDispatcherId,
+                ticket.Id,
+                NotificationType.ResultSubmitted,
+                $"Phản ánh [{ticket.TicketCode}] đã có " +
+                $"kết quả xử lý, vui lòng xác nhận");
+
         return (true, "Báo cáo kết quả thành công");
     }
 
@@ -426,6 +481,15 @@ public class TicketService
             oldStatus,
             ticket.Status,
             $"Chuyển trả: {request.Reason}");
+
+        if (!string.IsNullOrEmpty(
+        ticket.ReviewedByDispatcherId))
+            await _notificationService.CreateAsync(
+                ticket.ReviewedByDispatcherId,
+                ticket.Id,
+                NotificationType.StatusChanged,
+                $"Phản ánh [{ticket.TicketCode}] đã được " +
+                $"chuyển trả, cần phân công lại");
 
         return (true, "Chuyển trả hồ sơ thành công");
     }
@@ -463,6 +527,15 @@ public class TicketService
             oldStatus,
             ticket.Status,
             "Đã xác nhận kết quả và đóng phản ánh");
+
+        if (!string.IsNullOrEmpty(ticket.ReporterId))
+            await _notificationService.CreateAsync(
+                ticket.ReporterId,
+                ticket.Id,
+                NotificationType.StatusChanged,
+                $"Phản ánh [{ticket.TicketCode}] của bạn " +
+                $"đã được xử lý xong. " +
+                $"Hãy đánh giá kết quả!");
 
         // Gửi SMS thông báo
         await _smsService.SendTicketClosedAsync(
