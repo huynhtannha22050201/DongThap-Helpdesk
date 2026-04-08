@@ -54,6 +54,7 @@ namespace DongThapHelpdesk.Api
             builder.Services.AddSingleton<DepartmentRepository>();
             builder.Services.AddSingleton<RatingRepository>();
             builder.Services.AddSingleton<TicketActivityRepository>();
+            builder.Services.AddSingleton<NotificationRepository>();
 
             // ── Services ──────────────────────────────────────────────
             builder.Services.AddSingleton<TicketService>();
@@ -66,6 +67,8 @@ namespace DongThapHelpdesk.Api
             builder.Services.AddSingleton<TicketCodeGenerator>();
             builder.Services.AddSingleton<FileUploadService>();
             builder.Services.AddSingleton<UserService>();
+            builder.Services.AddSingleton<NotificationService>();
+            builder.Services.AddSingleton<DashboardService>();
 
             // ── CORS ──────────────────────────────────────────────────
             builder.Services.AddCors(options =>

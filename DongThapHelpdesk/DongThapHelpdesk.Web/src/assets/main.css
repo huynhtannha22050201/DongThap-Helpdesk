@@ -1,0 +1,73 @@
+/* Google Fonts — phải nằm TRƯỚC @import "tailwindcss" */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════
+   ĐỒNG THÁP HELPDESK — Design System Tokens
+   Theo chuẩn Cổng Dịch vụ công Quốc gia (dichvucong.gov.vn)
+   ══════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Brand Colors ──────────────────────────────────────── */
+  --color-brand-red: #da251d;
+  --color-brand-red-hover: #b91c1c;
+  --color-brand-red-light: #fee2e2;
+  --color-brand-gold: #ffc627;
+  --color-brand-gold-light: #fef3c7;
+
+  /* ── Semantic Colors ───────────────────────────────────── */
+  --color-success: #059669;
+  --color-success-light: #d1fae5;
+  --color-warning: #d97706;
+  --color-warning-light: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-light: #fee2e2;
+  --color-info: #2563eb;
+  --color-info-light: #dbeafe;
+
+  /* ── Neutral / Slate ───────────────────────────────────── */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+
+  /* ── Typography ────────────────────────────────────────── */
+  --font-sans: "Inter", "Roboto", system-ui, -apple-system, sans-serif;
+
+  /* ── Sidebar ───────────────────────────────────────────── */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+}
+
+/* ── Base Styles ─────────────────────────────────────────── */
+body {
+  font-family: var(--font-sans);
+  color: var(--color-slate-800);
+  background-color: var(--color-slate-50);
+}
+
+/* ── Scrollbar Custom ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-slate-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-slate-300);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate-400);
+}

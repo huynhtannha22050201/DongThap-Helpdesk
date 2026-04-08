@@ -736,7 +736,9 @@ public class TicketService
                 {
                     FileName = a.FileName,
                     Url = a.Url,
-                    MimeType = a.MimeType
+                    MimeType = a.MimeType,
+                    SizeBytes = a.SizeBytes,
+                    UploadedAt = a.UploadedAt
                 }).ToList(),
             ReporterName = t.ReporterName,
             ReporterPhone = t.ReporterPhone,
