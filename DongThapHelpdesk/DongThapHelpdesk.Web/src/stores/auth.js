@@ -7,7 +7,7 @@ export const useAuthStore = defineStore("auth", () => {
   // TODO: Xóa mock data này khi gắn API thật
   const user = ref({
     fullName: "Nguyễn Văn An",
-    role: "Admin", // Đổi thành 'Dispatcher', 'Assignee', 'Manager' để test
+    role: "Dispatcher", // Đổi thành 'Dispatcher', 'Assignee', 'Manager' để test
     phoneNumber: "0901234567",
     email: "admin@dongthap.gov.vn",
   });

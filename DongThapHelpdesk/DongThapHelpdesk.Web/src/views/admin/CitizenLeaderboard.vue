@@ -33,11 +33,6 @@
             {{ p.label }}
           </button>
         </div>
-        <button
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer text-[13px] font-medium"
-        >
-          <Download :size="15" /> Xuất Excel
-        </button>
       </div>
     </div>
 

@@ -543,7 +543,7 @@ import {
 
 const auth = useAuthStore();
 // Lấy role từ auth store, fallback 'Admin' khi chưa đăng nhập (dev mode)
-const role = computed(() => auth.userRole || "Manager");
+const role = computed(() => auth.userRole || "Dispatcher");
 
 // ── Page title theo role ──
 const pageTitle = computed(() => {
