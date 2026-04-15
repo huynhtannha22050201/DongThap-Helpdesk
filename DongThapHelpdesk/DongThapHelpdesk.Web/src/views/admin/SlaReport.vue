@@ -103,23 +103,20 @@
           <div
             v-for="day in slaByDay"
             :key="day.date"
-            class="flex items-center gap-3"
+            class="relative flex items-center gap-3 group"
           >
             <span class="text-xs text-slate-500 w-16">{{ day.date }}</span>
             <div
               class="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden flex"
             >
-              <!-- Xanh = đúng hạn -->
               <div
                 class="h-full bg-green-500 transition-all"
                 :style="{ width: day.onTimePercent + '%' }"
               ></div>
-              <!-- Vàng = cảnh báo -->
               <div
                 class="h-full bg-amber-400 transition-all"
                 :style="{ width: day.warningPercent + '%' }"
               ></div>
-              <!-- Đỏ = quá hạn -->
               <div
                 class="h-full bg-red-500 transition-all"
                 :style="{ width: day.breachedPercent + '%' }"
@@ -128,6 +125,34 @@
             <span class="text-xs font-medium text-slate-600 w-10 text-right">{{
               day.total
             }}</span>
+
+            <!-- Tooltip — hiện khi hover vào hàng -->
+            <div
+              class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+12px)] z-20 hidden group-hover:block bg-slate-800 text-white text-xs rounded-lg px-3 py-2.5 shadow-lg whitespace-nowrap"
+            >
+              <p class="font-semibold mb-1.5">
+                {{ day.date }} — {{ day.total }} phản ánh
+              </p>
+              <div class="space-y-1">
+                <p class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                  Đúng hạn: <span class="font-semibold">{{ day.onTime }}</span>
+                </p>
+                <p class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  Sắp hết hạn:
+                  <span class="font-semibold">{{ day.warning }}</span>
+                </p>
+                <p class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                  Quá hạn: <span class="font-semibold">{{ day.breached }}</span>
+                </p>
+              </div>
+              <!-- Mũi tên chỉ sang trái -->
+              <div
+                class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45"
+              ></div>
+            </div>
           </div>
         </div>
         <!-- Chú thích -->
@@ -321,13 +346,16 @@
         <div
           v-for="ticket in breachedTickets"
           :key="ticket.id"
-          class="flex items-center gap-4 px-5 py-3 hover:bg-red-50/30 transition"
+          @click="goToDetail(ticket.id)"
+          class="flex items-center gap-4 px-5 py-3 hover:bg-red-50/30 transition cursor-pointer group"
         >
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-0.5">
-              <span class="text-sm font-bold text-red-600">{{
-                ticket.ticketCode
-              }}</span>
+              <!-- Mã PA — font-mono + underline khi hover cho nhất quán -->
+              <span
+                class="text-sm font-bold text-[#DA251D] font-mono group-hover:underline"
+                >{{ ticket.ticketCode }}</span
+              >
               <span
                 class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                 :class="getStatusBadge(ticket.status).class"
@@ -358,6 +386,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
+import { useRouter } from "vue-router";
 import {
   Download,
   TrendingUp,
@@ -377,6 +406,12 @@ const auth = useAuthStore();
 const canExport = computed(() => auth.userRole !== "Admin");
 
 const selectedPeriod = ref("month");
+
+const router = useRouter();
+
+function goToDetail(id) {
+  router.push({ name: "TicketDetail", params: { id } });
+}
 
 const selectedPeriodLabel = computed(() => {
   const map = {
@@ -442,6 +477,9 @@ const slaByDay = ref([
     onTimePercent: 78,
     warningPercent: 11,
     breachedPercent: 11,
+    onTime: 14,
+    warning: 2,
+    breached: 2,
   },
   {
     date: "03/04",
@@ -449,6 +487,9 @@ const slaByDay = ref([
     onTimePercent: 82,
     warningPercent: 9,
     breachedPercent: 9,
+    onTime: 18,
+    warning: 2,
+    breached: 2,
   },
   {
     date: "04/04",
@@ -456,6 +497,9 @@ const slaByDay = ref([
     onTimePercent: 87,
     warningPercent: 7,
     breachedPercent: 6,
+    onTime: 13,
+    warning: 1,
+    breached: 1,
   },
   {
     date: "05/04",
@@ -463,6 +507,9 @@ const slaByDay = ref([
     onTimePercent: 84,
     warningPercent: 8,
     breachedPercent: 8,
+    onTime: 21,
+    warning: 2,
+    breached: 2,
   },
   {
     date: "06/04",
@@ -470,6 +517,9 @@ const slaByDay = ref([
     onTimePercent: 90,
     warningPercent: 5,
     breachedPercent: 5,
+    onTime: 18,
+    warning: 1,
+    breached: 1,
   },
   {
     date: "07/04",
@@ -477,6 +527,9 @@ const slaByDay = ref([
     onTimePercent: 86,
     warningPercent: 7,
     breachedPercent: 7,
+    onTime: 24,
+    warning: 2,
+    breached: 2,
   },
   {
     date: "08/04",
@@ -484,6 +537,9 @@ const slaByDay = ref([
     onTimePercent: 92,
     warningPercent: 8,
     breachedPercent: 0,
+    onTime: 11,
+    warning: 1,
+    breached: 0,
   },
 ]);
 

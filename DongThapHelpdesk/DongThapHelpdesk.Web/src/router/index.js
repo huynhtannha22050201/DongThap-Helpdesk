@@ -159,33 +159,30 @@ const router = createRouter({
   },
 });
 
-// // ── Navigation Guards ─────────────────────────────────────
-// router.beforeEach(async (to, from, next) => {
-//   const auth = useAuthStore();
+// ── Navigation Guards ─────────────────────────────────────
+router.beforeEach(async (to, from, next) => {
+  const auth = useAuthStore();
 
-//   // Nếu chưa fetch user lần nào thì thử fetch
-//   if (!auth.user) {
-//     await auth.fetchMe();
-//   }
+  await auth.initialize();
 
-//   // Trang chỉ dành cho guest (login) — nếu đã đăng nhập thì redirect
-//   if (to.meta.guest && auth.isLoggedIn) {
-//     return next(auth.isStaff ? { name: "Dashboard" } : { name: "Home" });
-//   }
+  // Trang chỉ dành cho guest (login) — nếu đã đăng nhập thì redirect
+  if (to.meta.guest && auth.isLoggedIn) {
+    return next(auth.isStaff ? { name: "Dashboard" } : { name: "Home" });
+  }
 
-//   // Trang yêu cầu đăng nhập
-//   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-//     return next({ name: "Login", query: { redirect: to.fullPath } });
-//   }
+  // Trang yêu cầu đăng nhập
+  if (to.meta.requiresAuth && !auth.isLoggedIn) {
+    return next({ name: "Login", query: { redirect: to.fullPath } });
+  }
 
-//   // Kiểm tra role
-//   const allowedRoles =
-//     to.meta.roles || to.matched.find((r) => r.meta.roles)?.meta.roles;
-//   if (allowedRoles && !allowedRoles.includes(auth.userRole)) {
-//     return next({ name: "Forbidden" });
-//   }
+  // Kiểm tra role
+  const allowedRoles =
+    to.meta.roles || to.matched.find((r) => r.meta.roles)?.meta.roles;
+  if (allowedRoles && !allowedRoles.includes(auth.userRole)) {
+    return next({ name: "Forbidden" });
+  }
 
-//   next();
-// });
+  next();
+});
 
 export default router;

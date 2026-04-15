@@ -13,6 +13,11 @@ public class UserRepository
         _collection = context.GetCollection<AppUser>();
     }
 
+    public async Task<List<AppUser>> GetUsersByRole(string role) 
+        => await _collection
+            .Find(u => u.Role.ToString() == role)
+            .ToListAsync();
+
     public async Task<AppUser?> GetByPhoneNumberAsync(string phoneNumber)
         => await _collection
             .Find(u => u.PhoneNumber == phoneNumber)
@@ -111,4 +116,15 @@ public class UserRepository
     }
     // Reset điểm quý về 0 vào đầu quý mới
     // Gọi bởi Background Service
+
+    public async Task<long> CountTotalAssigneesAsync()
+        => await _collection.CountDocumentsAsync(
+            Builders<AppUser>.Filter.Eq(u => u.Role, Enums.UserRole.Assignee));
+
+    public async Task<long> CountAssigneesByDepartmentAsync(string departmentId)
+        => await _collection.CountDocumentsAsync(
+            Builders<AppUser>.Filter.And(
+                Builders<AppUser>.Filter.Eq(u => u.DepartmentId, departmentId),
+                Builders<AppUser>.Filter.Eq(u => u.Role, Enums.UserRole.Assignee)
+            ));
 }

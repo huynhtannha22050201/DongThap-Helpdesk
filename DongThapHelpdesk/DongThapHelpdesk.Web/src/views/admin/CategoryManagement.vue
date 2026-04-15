@@ -1,5 +1,22 @@
 <template>
   <div class="space-y-5">
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="toast.show"
+          :class="[
+            'fixed top-4 right-4 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-[14px] font-medium',
+            toast.type === 'success'
+              ? 'bg-emerald-500 text-white'
+              : 'bg-red-500 text-white',
+          ]"
+        >
+          <CheckCircle2 v-if="toast.type === 'success'" :size="16" />
+          <AlertCircle v-else :size="16" />
+          {{ toast.message }}
+        </div>
+      </Transition>
+    </Teleport>
     <!-- Header -->
     <div
       class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3"
@@ -58,20 +75,68 @@
           />
           <input
             v-model="search"
+            @input="onSearchInput"
             type="text"
             placeholder="Tìm theo tên hoặc mã..."
             class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-slate-300 focus:border-[#DA251D]/40 focus:ring-2 focus:ring-[#DA251D]/10 outline-none transition-all text-[13px]"
           />
         </div>
         <div class="flex items-center gap-2">
-          <select
-            v-model="statusFilter"
-            class="appearance-none pl-3 pr-8 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 cursor-pointer text-[13px]"
-          >
-            <option value="">Trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Tạm ngưng</option>
-          </select>
+          <div class="relative">
+            <button
+              @click="showStatusDropdown = !showStatusDropdown"
+              :class="[
+                'flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-lg border bg-white cursor-pointer text-[13px] transition-colors',
+                statusFilter
+                  ? 'border-[#DA251D]/30 text-[#DA251D]'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300',
+              ]"
+            >
+              <Power :size="14" />
+              {{
+                statusFilter === "active"
+                  ? "Hoạt động"
+                  : statusFilter === "inactive"
+                    ? "Tạm ngưng"
+                    : "Trạng thái"
+              }}
+              <ChevronDown :size="14" class="text-slate-400" />
+            </button>
+            <div
+              v-if="showStatusDropdown"
+              class="absolute top-full left-0 mt-1 w-40 bg-white rounded-lg border border-slate-200 shadow-lg z-30 overflow-hidden"
+            >
+              <button
+                @click="
+                  statusFilter = 'active';
+                  showStatusDropdown = false;
+                "
+                :class="[
+                  'w-full flex items-center gap-2 px-3 py-2.5 text-[13px] text-left transition-colors cursor-pointer',
+                  statusFilter === 'active'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'text-slate-600 hover:bg-slate-50',
+                ]"
+              >
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Hoạt
+                động
+              </button>
+              <button
+                @click="
+                  statusFilter = 'inactive';
+                  showStatusDropdown = false;
+                "
+                :class="[
+                  'w-full flex items-center gap-2 px-3 py-2.5 text-[13px] text-left transition-colors cursor-pointer',
+                  statusFilter === 'inactive'
+                    ? 'bg-red-50 text-red-600'
+                    : 'text-slate-600 hover:bg-slate-50',
+                ]"
+              >
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500" /> Tạm ngưng
+              </button>
+            </div>
+          </div>
           <button
             v-if="search || statusFilter"
             @click="
@@ -85,246 +150,319 @@
         </div>
       </div>
     </div>
-
-    <!-- Desktop Table -->
+    <!-- ✅ THÊM: Loading state -->
     <div
-      class="hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden"
+      v-if="loading && categories.length === 0"
+      class="flex justify-center py-20"
     >
-      <div class="overflow-x-auto">
-        <table class="w-full text-[13px]">
-          <thead>
-            <tr class="bg-slate-50/70">
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 w-14 text-center font-medium text-slate-400"
-              >
-                STT
-              </th>
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
-              >
-                <SortBtn label="Mã" field="code" />
-              </th>
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
-              >
-                <SortBtn label="Tên lĩnh vực" field="name" />
-              </th>
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 font-medium hidden lg:table-cell text-slate-500"
-              >
-                Mô tả
-              </th>
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
-              >
-                <SortBtn label="SLA (giờ)" field="defaultSlaHours" />
-              </th>
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 font-medium hidden xl:table-cell text-center text-slate-500"
-              >
-                Phản ánh
-              </th>
-              <th
-                class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
-              >
-                <SortBtn label="Trạng thái" field="isActive" />
-              </th>
-              <th
-                class="text-center px-4 py-3.5 border-b border-slate-100 w-28 font-medium text-slate-500"
-              >
-                Hành động
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="filtered.length === 0">
-              <td colspan="8" class="px-4 py-16 text-center">
-                <div class="flex flex-col items-center">
-                  <div
-                    class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3"
-                  >
-                    <Layers :size="24" class="text-slate-300" />
-                  </div>
-                  <p class="text-slate-500 text-[15px] font-medium">
-                    Không tìm thấy danh mục nào
-                  </p>
-                </div>
-              </td>
-            </tr>
-            <tr
-              v-for="(c, i) in filtered"
-              :key="c.id"
-              :class="[
-                'border-b border-slate-50 hover:bg-slate-50/50 transition-colors',
-                !c.isActive ? 'opacity-60' : '',
-              ]"
-            >
-              <td class="px-4 py-3.5 text-center text-slate-400 font-medium">
-                {{ i + 1 }}
-              </td>
-              <td class="px-4 py-3.5">
-                <span
-                  :class="[
-                    'inline-flex items-center px-2.5 py-1 rounded-lg font-mono text-[12px] font-semibold',
-                    COLORS[c.color] || 'bg-slate-100 text-slate-600',
-                  ]"
-                  >{{ c.code }}</span
-                >
-              </td>
-              <td class="px-4 py-3.5">
-                <span class="text-slate-800 text-[14px] font-medium">{{
-                  c.name
-                }}</span>
-              </td>
-              <td class="px-4 py-3.5 text-slate-500 hidden lg:table-cell">
-                <span class="block max-w-[280px] truncate">{{
-                  c.description
-                }}</span>
-              </td>
-              <td class="px-4 py-3.5">
-                <div class="flex items-center gap-1.5">
-                  <Clock :size="13" class="text-slate-400" />
-                  <span class="text-slate-700 font-medium"
-                    >{{ c.defaultSlaHours }}h</span
-                  >
-                  <span class="text-slate-400 text-[12px]"
-                    >({{ Math.floor(c.defaultSlaHours / 24) }}d)</span
-                  >
-                </div>
-              </td>
-              <td
-                class="px-4 py-3.5 text-center hidden xl:table-cell text-slate-600 font-medium"
-              >
-                {{ c.ticketCount }}
-              </td>
-              <td class="px-4 py-3.5">
-                <span
-                  v-if="c.isActive"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[12px] font-medium"
-                  ><span class="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Hoạt
-                  động</span
-                >
-                <span
-                  v-else
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-[12px] font-medium"
-                  ><span class="w-1.5 h-1.5 rounded-full bg-red-500" /> Tạm
-                  ngưng</span
-                >
-              </td>
-              <td class="px-4 py-3.5">
-                <div class="flex items-center justify-center gap-1">
-                  <button
-                    @click="openModal(c)"
-                    class="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                  >
-                    <Edit3 :size="15" />
-                  </button>
-                  <button
-                    @click="handleToggle(c.id)"
-                    :class="[
-                      'p-2 rounded-lg transition-colors cursor-pointer',
-                      c.isActive
-                        ? 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                        : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50',
-                    ]"
-                  >
-                    <ToggleRight
-                      v-if="c.isActive"
-                      :size="18"
-                      class="text-emerald-500"
-                    />
-                    <ToggleLeft v-else :size="18" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <div
+        class="animate-spin w-8 h-8 border-4 border-slate-200 border-t-[#DA251D] rounded-full"
+      />
     </div>
 
-    <!-- Mobile cards -->
-    <div class="md:hidden space-y-3">
+    <!-- ✅ THÊM: Error state -->
+    <div v-else-if="apiError" class="text-center py-20">
+      <p class="text-red-500 mb-2">{{ apiError }}</p>
+      <button @click="fetchCategories" class="text-[#DA251D] underline text-sm">
+        Thử lại
+      </button>
+    </div>
+    <template v-else>
+      <!-- Desktop Table -->
       <div
-        v-if="filtered.length === 0"
-        class="bg-white rounded-xl border border-slate-100 shadow-sm p-10 text-center"
+        class="hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden"
       >
-        <Layers :size="24" class="text-slate-300 mx-auto mb-3" />
-        <p class="text-slate-500 text-[14px] font-medium">
-          Không tìm thấy danh mục nào
-        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-[13px]">
+            <thead>
+              <tr class="bg-slate-50/70">
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 w-14 text-center font-medium text-slate-400"
+                >
+                  STT
+                </th>
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
+                >
+                  <SortBtn label="Mã" field="code" />
+                </th>
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
+                >
+                  <SortBtn label="Tên lĩnh vực" field="name" />
+                </th>
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 font-medium hidden lg:table-cell text-slate-500"
+                >
+                  Mô tả
+                </th>
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
+                >
+                  <SortBtn label="SLA (giờ)" field="defaultSlaHours" />
+                </th>
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 font-medium hidden xl:table-cell text-center text-slate-500"
+                >
+                  Phản ánh
+                </th>
+                <th
+                  class="text-left px-4 py-3.5 border-b border-slate-100 font-medium"
+                >
+                  <SortBtn label="Trạng thái" field="isActive" />
+                </th>
+                <th
+                  class="text-center px-4 py-3.5 border-b border-slate-100 w-28 font-medium text-slate-500"
+                >
+                  Hành động
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="filtered.length === 0">
+                <td colspan="8" class="px-4 py-16 text-center">
+                  <div class="flex flex-col items-center">
+                    <div
+                      class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3"
+                    >
+                      <Layers :size="24" class="text-slate-300" />
+                    </div>
+                    <p class="text-slate-500 text-[15px] font-medium">
+                      Không tìm thấy danh mục nào
+                    </p>
+                  </div>
+                </td>
+              </tr>
+              <tr
+                v-for="(c, i) in filtered"
+                :key="c.id"
+                :class="[
+                  'border-b border-slate-50 hover:bg-slate-50/50 transition-colors',
+                  !c.isActive ? 'opacity-60' : '',
+                ]"
+              >
+                <td class="px-4 py-3.5 text-center text-slate-400 font-medium">
+                  {{ i + 1 }}
+                </td>
+                <td class="px-4 py-3.5">
+                  <span
+                    :class="[
+                      'inline-flex items-center px-2.5 py-1 rounded-lg font-mono text-[12px] font-semibold',
+                      getCategoryColor(c.code),
+                    ]"
+                    >{{ c.code }}</span
+                  >
+                </td>
+                <td class="px-4 py-3.5">
+                  <span class="text-slate-800 text-[14px] font-medium">{{
+                    c.name
+                  }}</span>
+                </td>
+                <td class="px-4 py-3.5 text-slate-500 hidden lg:table-cell">
+                  <span class="block max-w-[280px] truncate">{{
+                    c.description
+                  }}</span>
+                </td>
+                <td class="px-4 py-3.5">
+                  <div class="flex items-center gap-1.5">
+                    <Clock :size="13" class="text-slate-400" />
+                    <span class="text-slate-700 font-medium"
+                      >{{ c.defaultSlaHours }}h</span
+                    >
+                    <span class="text-slate-400 text-[12px]"
+                      >({{ Math.floor(c.defaultSlaHours / 24) }}d)</span
+                    >
+                  </div>
+                </td>
+                <td
+                  class="px-4 py-3.5 text-center hidden xl:table-cell text-slate-600 font-medium"
+                >
+                  {{ c.ticketCount }}
+                </td>
+                <td class="px-4 py-3.5">
+                  <span
+                    v-if="c.isActive"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[12px] font-medium"
+                    ><span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Hoạt động</span
+                  >
+                  <span
+                    v-else
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-[12px] font-medium"
+                    ><span class="w-1.5 h-1.5 rounded-full bg-red-500" /> Tạm
+                    ngưng</span
+                  >
+                </td>
+                <td class="px-4 py-3.5">
+                  <div class="flex items-center justify-center gap-1">
+                    <button
+                      @click="openModal(c)"
+                      class="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      <Edit3 :size="15" />
+                    </button>
+                    <button
+                      @click="handleToggle(c.id)"
+                      :class="[
+                        'p-2 rounded-lg transition-colors cursor-pointer',
+                        c.isActive
+                          ? 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                          : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50',
+                      ]"
+                    >
+                      <ToggleRight
+                        v-if="c.isActive"
+                        :size="18"
+                        class="text-emerald-500"
+                      />
+                      <ToggleLeft v-else :size="18" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+      <!-- Pagination — sau Desktop Table -->
       <div
-        v-for="c in filtered"
-        :key="c.id"
-        :class="[
-          'bg-white rounded-xl border shadow-sm p-4',
-          !c.isActive ? 'opacity-60' : '',
-        ]"
+        v-if="totalPages > 1"
+        class="flex items-center justify-between bg-white rounded-xl shadow-sm border border-slate-100 px-4 py-3"
       >
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-2.5">
-            <span
-              :class="[
-                'inline-flex items-center px-2.5 py-1 rounded-lg text-[12px] font-semibold',
-                COLORS[c.color] || 'bg-slate-100 text-slate-600',
-              ]"
-              >{{ c.code }}</span
-            >
-            <span class="text-slate-800 text-[15px] font-semibold">{{
-              c.name
-            }}</span>
-          </div>
-          <span
-            v-if="c.isActive"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-medium"
-            ><span class="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Hoạt
-            động</span
-          >
-          <span
-            v-else
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-500 text-[11px] font-medium"
-            ><span class="w-1.5 h-1.5 rounded-full bg-red-500" /> Tạm
-            ngưng</span
-          >
-        </div>
-        <p class="text-slate-500 mb-3 line-clamp-2 text-[13px] leading-[1.5]">
-          {{ c.description }}
+        <p class="text-slate-400 text-[13px]">
+          Hiển thị {{ (currentPage - 1) * pageSize + 1 }} –
+          {{ Math.min(currentPage * pageSize, totalItems) }} trên
+          {{ totalItems }} danh mục
         </p>
-        <div class="flex items-center gap-4 mb-3 text-slate-500 text-[13px]">
-          <span class="flex items-center gap-1"
-            ><Clock :size="13" /> SLA: {{ c.defaultSlaHours }}h</span
-          >
-          <span class="flex items-center gap-1"
-            ><FileText :size="13" /> {{ c.ticketCount }} phản ánh</span
-          >
-        </div>
-        <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
+        <div class="flex items-center gap-1">
           <button
-            @click="openModal(c)"
-            class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer text-[13px] font-medium"
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
           >
-            <Edit3 :size="14" /> Sửa
+            <ChevronLeft :size="16" />
           </button>
           <button
-            @click="handleToggle(c.id)"
+            v-for="p in totalPages"
+            :key="p"
+            @click="goToPage(p)"
             :class="[
-              'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border transition-colors cursor-pointer text-[13px] font-medium',
-              c.isActive
-                ? 'border-red-200 text-red-600 hover:bg-red-50'
-                : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50',
+              'w-9 h-9 rounded-lg text-[13px] font-medium transition cursor-pointer',
+              p === currentPage
+                ? 'bg-[#DA251D] text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100',
             ]"
           >
-            <Power :size="14" /> {{ c.isActive ? "Tạm ngưng" : "Kích hoạt" }}
+            {{ p }}
+          </button>
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+          >
+            <ChevronRight :size="16" />
           </button>
         </div>
       </div>
-    </div>
+      <!-- Mobile cards -->
+      <div class="md:hidden space-y-3">
+        <div
+          v-if="filtered.length === 0"
+          class="bg-white rounded-xl border border-slate-100 shadow-sm p-10 text-center"
+        >
+          <Layers :size="24" class="text-slate-300 mx-auto mb-3" />
+          <p class="text-slate-500 text-[14px] font-medium">
+            Không tìm thấy danh mục nào
+          </p>
+        </div>
+        <div
+          v-for="c in filtered"
+          :key="c.id"
+          :class="[
+            'bg-white rounded-xl border shadow-sm p-4',
+            !c.isActive ? 'opacity-60' : '',
+          ]"
+        >
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-2.5">
+              <!-- Bỏ COLORS[c.color], dùng màu mặc định vì API không trả field color -->
+              <span
+                :class="[
+                  'inline-flex items-center px-2.5 py-1 rounded-lg text-[12px] font-semibold',
+                  getCategoryColor(c.code),
+                ]"
+              >
+                {{ c.code }}
+              </span>
+              <span class="text-slate-800 text-[15px] font-semibold">{{
+                c.name
+              }}</span>
+            </div>
+            <span
+              v-if="c.isActive"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-medium"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Hoạt động
+            </span>
+            <span
+              v-else
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-500 text-[11px] font-medium"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-red-500" /> Tạm ngưng
+            </span>
+          </div>
 
+          <!-- Thay description bằng parentCategoryName từ API -->
+          <p
+            v-if="c.parentCategoryName"
+            class="text-slate-500 mb-3 text-[13px]"
+          >
+            Thuộc: {{ c.parentCategoryName }}
+          </p>
+          <p v-else class="text-slate-400 italic mb-3 text-[13px]">
+            Danh mục gốc
+          </p>
+
+          <!-- Bỏ ticketCount vì API không trả, chỉ giữ SLA -->
+          <div class="flex items-center gap-4 mb-3 text-slate-500 text-[13px]">
+            <span class="flex items-center gap-1">
+              <Clock :size="13" /> SLA: {{ c.defaultSlaHours }}h
+              <span class="text-slate-400 text-[12px]">
+                ({{ Math.floor(c.defaultSlaHours / 24) }}d)
+              </span>
+            </span>
+          </div>
+
+          <!-- Actions giữ nguyên -->
+          <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
+            <button
+              @click="openModal(c)"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer text-[13px] font-medium"
+            >
+              <Edit3 :size="14" /> Sửa
+            </button>
+            <button
+              @click="handleToggle(c.id)"
+              :class="[
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border transition-colors cursor-pointer text-[13px] font-medium',
+                c.isActive
+                  ? 'border-red-200 text-red-600 hover:bg-red-50'
+                  : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50',
+              ]"
+            >
+              <Power :size="14" /> {{ c.isActive ? "Tạm ngưng" : "Kích hoạt" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
     <!-- Modal -->
     <Teleport to="body">
       <div
         v-if="modalOpen"
+        @keydown.esc="modalOpen = false"
+        tabindex="0"
+        ref="modalRef"
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
         <div
@@ -496,7 +634,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
+import { categoryService } from "@/services/categoryService";
 import {
   Search,
   Plus,
@@ -505,7 +644,9 @@ import {
   ToggleRight,
   X,
   Clock,
-  FileText,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
   CheckCircle2,
   Loader2,
   Layers,
@@ -513,148 +654,117 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  AlertCircle, // thêm icon cho toast/error
 } from "lucide-vue-next";
 
-const COLORS = {
-  GT: "bg-blue-100 text-blue-700",
-  MT: "bg-emerald-100 text-emerald-700",
-  HT: "bg-amber-100 text-amber-700",
-  AN: "bg-violet-100 text-violet-700",
-  YT: "bg-pink-100 text-pink-700",
-  GD: "bg-cyan-100 text-cyan-700",
-  NN: "bg-lime-100 text-lime-700",
-  XD: "bg-orange-100 text-orange-700",
-};
+const categories = ref([]);
+const totalItems = ref(0);
+const totalPages = ref(1);
+const currentPage = ref(1);
+const pageSize = 5; // Cố định 5 items/trang
+const loading = ref(false);
+const apiError = ref(null);
+const toast = ref({ show: false, message: "", type: "success" });
+const modalRef = ref(null);
+const showStatusDropdown = ref(false);
+const stats = ref({ total: 0, active: 0, inactive: 0, avgSla: 0 });
 
-const categories = ref([
-  {
-    id: "c1",
-    code: "GT-OGA",
-    name: "Giao thông",
-    description:
-      "Phản ánh về đường sá, cầu cống, hệ thống tín hiệu giao thông, lấn chiếm vỉa hè",
-    defaultSlaHours: 168,
-    isActive: true,
-    ticketCount: 342,
-    color: "GT",
-  },
-  {
-    id: "c2",
-    code: "MT-RAC",
-    name: "Môi trường",
-    description:
-      "Phản ánh về rác thải, ô nhiễm nguồn nước, không khí, tiếng ồn, xả thải trái phép",
-    defaultSlaHours: 120,
-    isActive: true,
-    ticketCount: 218,
-    color: "MT",
-  },
-  {
-    id: "c3",
-    code: "HT-DTH",
-    name: "Hạ tầng đô thị",
-    description:
-      "Phản ánh về cấp thoát nước, điện chiếu sáng, công viên, cây xanh",
-    defaultSlaHours: 168,
-    isActive: true,
-    ticketCount: 187,
-    color: "HT",
-  },
-  {
-    id: "c4",
-    code: "AN-TT",
-    name: "An ninh trật tự",
-    description:
-      "Phản ánh về an ninh khu dân cư, tiếng ồn, hoạt động kinh doanh trái phép",
-    defaultSlaHours: 72,
-    isActive: true,
-    ticketCount: 156,
-    color: "AN",
-  },
-  {
-    id: "c5",
-    code: "YT-SK",
-    name: "Y tế - Sức khỏe",
-    description: "Phản ánh về vệ sinh an toàn thực phẩm, dịch bệnh, cơ sở y tế",
-    defaultSlaHours: 48,
-    isActive: true,
-    ticketCount: 89,
-    color: "YT",
-  },
-  {
-    id: "c6",
-    code: "GD-DT",
-    name: "Giáo dục - Đào tạo",
-    description: "Phản ánh về trường học, chất lượng giáo dục, cơ sở vật chất",
-    defaultSlaHours: 168,
-    isActive: true,
-    ticketCount: 67,
-    color: "GD",
-  },
-  {
-    id: "c7",
-    code: "NN-PT",
-    name: "Nông nghiệp",
-    description:
-      "Phản ánh về sản xuất nông nghiệp, thủy lợi, đê điều, phòng chống thiên tai",
-    defaultSlaHours: 240,
-    isActive: true,
-    ticketCount: 43,
-    color: "NN",
-  },
-  {
-    id: "c8",
-    code: "XD-CB",
-    name: "Xây dựng",
-    description: "Phản ánh về xây dựng trái phép, quy hoạch, cấp phép xây dựng",
-    defaultSlaHours: 168,
-    isActive: false,
-    ticketCount: 0,
-    color: "XD",
-  },
-]);
+// ── Helper: hiển thị toast ──────────────────────────────
+function showToast(message, type = "success") {
+  toast.value = { show: true, message, type };
+  setTimeout(() => (toast.value.show = false), 3000);
+}
+
+// ── Fetch danh mục từ API ───────────────────────────────
+async function fetchCategories() {
+  loading.value = true;
+  apiError.value = null;
+  try {
+    const isActive =
+      statusFilter.value === "active"
+        ? true
+        : statusFilter.value === "inactive"
+          ? false
+          : undefined;
+
+    const { data } = await categoryService.getPaged(
+      currentPage.value,
+      pageSize,
+      search.value || undefined,
+      isActive,
+      sortField.value || undefined, // THÊM
+      sortDir.value || undefined, // THÊM
+    );
+    categories.value = data.items;
+    totalItems.value = data.total;
+    totalPages.value = data.totalPages;
+    stats.value = data.stats;
+  } catch (err) {
+    apiError.value = err.response?.data?.message || "Không thể tải danh mục";
+  } finally {
+    loading.value = false;
+  }
+}
+
+function goToPage(page) {
+  currentPage.value = page;
+  fetchCategories();
+}
+
+let searchTimeout = null;
+function onSearchInput() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1; // Reset về trang 1 khi search
+    fetchCategories();
+  }, 300); // Debounce 300ms
+}
+
+onMounted(() => {
+  fetchCategories();
+});
 
 const statsCards = computed(() => [
   {
     label: "Tổng danh mục",
-    value: categories.value.length,
+    value: stats.value.total,
     icon: Layers,
     color: "bg-blue-50 text-blue-600",
   },
   {
     label: "Đang hoạt động",
-    value: categories.value.filter((c) => c.isActive).length,
+    value: stats.value.active,
     icon: CheckCircle2,
     color: "bg-emerald-50 text-emerald-600",
   },
   {
     label: "Tạm ngưng",
-    value: categories.value.filter((c) => !c.isActive).length,
+    value: stats.value.inactive,
     icon: Power,
     color: "bg-red-50 text-red-500",
   },
   {
-    label: "Tổng phản ánh",
-    value: categories.value
-      .reduce((s, c) => s + c.ticketCount, 0)
-      .toLocaleString(),
-    icon: FileText,
+    label: "SLA trung bình",
+    value: stats.value.avgSla ? stats.value.avgSla + "h" : "0h",
+    icon: Clock,
     color: "bg-violet-50 text-violet-600",
   },
 ]);
 
 const search = ref("");
 const statusFilter = ref("");
-const sortField = ref("code");
-const sortDir = ref("asc");
+const sortField = ref("");
+const sortDir = ref("desc");
 
 function handleSort(f) {
-  if (sortField.value === f)
+  if (sortField.value === f) {
     sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
-  else {
+  } else {
     sortField.value = f;
     sortDir.value = "asc";
   }
+  currentPage.value = 1;
+  fetchCategories();
 }
 
 const SortBtn = {
@@ -666,32 +776,29 @@ const SortBtn = {
   template: `<button @click="handleSort(field)" class="flex items-center gap-1 cursor-pointer group select-none"><span :class="sortField === field ? 'text-slate-800' : 'text-slate-500'">{{ label }}</span><ArrowUp v-if="sortField === field && sortDir === 'asc'" :size="13" class="text-[#DA251D]" /><ArrowDown v-else-if="sortField === field && sortDir === 'desc'" :size="13" class="text-[#DA251D]" /><ArrowUpDown v-else :size="13" class="text-slate-300 group-hover:text-slate-500 transition-colors" /></button>`,
 };
 
-const filtered = computed(() => {
-  let list = [...categories.value];
-  if (search.value) {
-    const q = search.value.toLowerCase();
-    list = list.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q),
-    );
-  }
-  if (statusFilter.value)
-    list = list.filter((c) =>
-      statusFilter.value === "active" ? c.isActive : !c.isActive,
-    );
-  list.sort((a, b) => {
-    const av = String(a[sortField.value]),
-      bv = String(b[sortField.value]);
-    return sortDir.value === "asc"
-      ? av.localeCompare(bv)
-      : bv.localeCompare(av);
-  });
-  return list;
-});
+const filtered = computed(() => categories.value);
 
-function handleToggle(id) {
-  const c = categories.value.find((c) => c.id === id);
-  if (c) c.isActive = !c.isActive;
+async function handleToggle(id) {
+  const cat = categories.value.find((c) => c.id === id);
+  if (!cat) return;
+
+  try {
+    await categoryService.update(id, {
+      name: cat.name,
+      code: cat.code,
+      description: cat.description,
+      defaultSlaHours: cat.defaultSlaHours,
+      isActive: !cat.isActive,
+    });
+    showToast(
+      cat.isActive
+        ? `Đã tạm ngưng "${cat.name}"`
+        : `Đã kích hoạt "${cat.name}"`,
+    );
+    await fetchCategories();
+  } catch (err) {
+    showToast(err.response?.data?.message || "Có lỗi xảy ra", "error");
+  }
 }
 
 // Modal
@@ -734,16 +841,87 @@ function openModal(cat) {
   modalOpen.value = true;
 }
 
-function handleSave() {
+async function handleSave() {
+  // ── Validate ────────────────────────────────────────
   Object.keys(errors).forEach((k) => delete errors[k]);
   if (!form.code.trim()) errors.code = "Vui lòng nhập mã";
   if (!form.name.trim()) errors.name = "Vui lòng nhập tên";
   if (form.defaultSlaHours <= 0) errors.defaultSlaHours = "SLA phải > 0";
   if (Object.keys(errors).length > 0) return;
+
   saving.value = true;
-  setTimeout(() => {
-    saving.value = false;
+  try {
+    if (editingCat.value) {
+      // CẬP NHẬT
+      await categoryService.update(editingCat.value.id, {
+        name: form.name,
+        code: form.code,
+        description: form.description,
+        defaultSlaHours: Number(form.defaultSlaHours),
+        isActive: form.isActive,
+      });
+      showToast(`Cập nhật danh mục "${form.name}" thành công`);
+    } else {
+      // TẠO MỚI
+      sortField.value = "";
+      sortDir.value = "desc";
+      currentPage.value = 1;
+      await categoryService.create({
+        name: form.name,
+        code: form.code,
+        description: form.description,
+        defaultSlaHours: Number(form.defaultSlaHours),
+      });
+      showToast(`Tạo danh mục "${form.name}" thành công`);
+    }
     modalOpen.value = false;
-  }, 600);
+    await fetchCategories(); // Reload danh sách từ DB
+  } catch (err) {
+    // Hiển thị lỗi từ backend (ví dụ: "Mã danh mục đã tồn tại")
+    const msg = err.response?.data?.message || "Có lỗi xảy ra";
+    showToast(msg, "error");
+  } finally {
+    saving.value = false;
+  }
 }
+
+const COLOR_PALETTE = [
+  "bg-blue-100 text-blue-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-violet-100 text-violet-700",
+  "bg-pink-100 text-pink-700",
+  "bg-cyan-100 text-cyan-700",
+  "bg-lime-100 text-lime-700",
+  "bg-orange-100 text-orange-700",
+  "bg-rose-100 text-rose-700",
+  "bg-teal-100 text-teal-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-yellow-100 text-yellow-700",
+];
+
+function getCategoryColor(code) {
+  if (!code) return "bg-slate-100 text-slate-600";
+  // Tìm vị trí của danh mục trong danh sách → mỗi vị trí 1 màu khác nhau
+  const index = categories.value.findIndex((c) => c.code === code);
+  return COLOR_PALETTE[index % COLOR_PALETTE.length];
+}
+
+function onClickOutside(e) {
+  if (!e.target.closest(".relative")) {
+    showStatusDropdown.value = false;
+  }
+}
+onMounted(() => document.addEventListener("click", onClickOutside));
+
+watch(modalOpen, (val) => {
+  if (val) {
+    nextTick(() => modalRef.value?.focus());
+  }
+});
+
+watch(statusFilter, () => {
+  currentPage.value = 1;
+  fetchCategories();
+});
 </script>

@@ -22,4 +22,5 @@ public class Department
     public string? ResponsibleUserId { get; set; } // default Assignee head
 
     public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

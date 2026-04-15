@@ -13,32 +13,17 @@ public class CategoryService
         _repo = repo;
     }
 
-    // Lấy toàn bộ dạng cây phân cấp
-    public async Task<List<CategoryResponse>> GetTreeAsync()
-    {
-        var all = await _repo.GetActiveAsync();
-        var roots = all
-            .Where(c => c.ParentCategoryId == null)
-            .ToList();
-
-        return roots.Select(r => BuildTree(r, all)).ToList();
-    }
-
     // Lấy danh sách phẳng để hiển thị trong form
     public async Task<List<CategoryResponse>> GetFlatAsync()
     {
-        var all = await _repo.GetActiveAsync();
+        var all = await _repo.GetAllAsync();
         return all.Select(c => new CategoryResponse
         {
             Id = c.Id,
             Name = c.Name,
             Code = c.Code,
-            ParentCategoryId = c.ParentCategoryId,
-            ParentCategoryName = c.ParentCategoryId != null
-                ? all.FirstOrDefault(p =>
-                    p.Id == c.ParentCategoryId)?.Name
-                : null,
             DefaultSlaHours = c.DefaultSlaHours,
+            Description = c.Description,
             IsActive = c.IsActive
         }).ToList();
     }
@@ -53,8 +38,8 @@ public class CategoryService
             Id = category.Id,
             Name = category.Name,
             Code = category.Code,
-            ParentCategoryId = category.ParentCategoryId,
             DefaultSlaHours = category.DefaultSlaHours,
+            Description = category.Description,
             IsActive = category.IsActive
         };
     }
@@ -72,8 +57,8 @@ public class CategoryService
         {
             Name = request.Name,
             Code = request.Code.ToUpper(),
-            ParentCategoryId = request.ParentCategoryId,
             DefaultSlaHours = request.DefaultSlaHours,
+            Description = request.Description,
             IsActive = true
         };
 
@@ -85,8 +70,8 @@ public class CategoryService
                 Id = category.Id,
                 Name = category.Name,
                 Code = category.Code,
-                ParentCategoryId = category.ParentCategoryId,
                 DefaultSlaHours = category.DefaultSlaHours,
+                Description = category.Description,
                 IsActive = category.IsActive
             });
     }
@@ -101,6 +86,7 @@ public class CategoryService
         category.Name = request.Name;
         category.Code = request.Code.ToUpper();
         category.DefaultSlaHours = request.DefaultSlaHours;
+        category.Description = request.Description;
         category.IsActive = request.IsActive;
 
         await _repo.UpdateAsync(category);
@@ -118,26 +104,37 @@ public class CategoryService
         return (true, "Xóa danh mục thành công");
     }
 
-    // ── Helper: Xây dựng cây phân cấp ────────────────────
-    private static CategoryResponse BuildTree(
-        IncidentCategory node,
-        List<IncidentCategory> all)
+    public async Task<(List<CategoryResponse> Items, long Total)>
+    GetPagedAsync(int page, int pageSize, string? search = null,
+    bool? isActive = null, string? sortField = null, string? sortDir = null)
     {
-        var children = all
-            .Where(c => c.ParentCategoryId == node.Id)
-            .ToList();
+        var items = await _repo.GetPagedAsync(page, pageSize, search, isActive, sortField, sortDir);
+        var total = await _repo.CountAsync(search, isActive);
 
-        return new CategoryResponse
+        var responses = items.Select(c => new CategoryResponse
         {
-            Id = node.Id,
-            Name = node.Name,
-            Code = node.Code,
-            ParentCategoryId = node.ParentCategoryId,
-            DefaultSlaHours = node.DefaultSlaHours,
-            IsActive = node.IsActive,
-            Children = children
-                .Select(c => BuildTree(c, all))
-                .ToList()
+            Id = c.Id,
+            Name = c.Name,
+            Code = c.Code,
+            Description = c.Description,
+            DefaultSlaHours = c.DefaultSlaHours,
+            IsActive = c.IsActive
+        }).ToList();
+
+        return (responses, total);
+    }
+
+    public async Task<object> GetStatsAsync()
+    {
+        var all = await _repo.GetAllAsync();
+        return new
+        {
+            total = all.Count,
+            active = all.Count(c => c.IsActive),
+            inactive = all.Count(c => !c.IsActive),
+            avgSla = all.Where(c => c.IsActive).Any()
+                ? (int)Math.Round(all.Where(c => c.IsActive).Average(c => c.DefaultSlaHours))
+                : 0
         };
     }
 }

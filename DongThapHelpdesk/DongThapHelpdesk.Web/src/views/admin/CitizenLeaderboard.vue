@@ -321,7 +321,8 @@
             <tr
               v-for="c in filteredLeaderboard"
               :key="c.rank"
-              class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+              @click="openProfile(getCitizenDetail(c))"
+              class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
             >
               <td class="px-4 py-3.5 text-center">
                 <div
@@ -420,7 +421,12 @@
 
       <!-- Mobile cards -->
       <div class="md:hidden divide-y divide-slate-50">
-        <div v-for="c in filteredLeaderboard" :key="c.rank" class="px-4 py-4">
+        <div
+          v-for="c in filteredLeaderboard"
+          :key="c.rank"
+          @click="openProfile(getCitizenDetail(c))"
+          class="px-4 py-4"
+        >
           <div class="flex items-center gap-3 mb-2">
             <div
               v-if="c.rank <= 3"
@@ -505,6 +511,217 @@
         </p>
       </div>
     </div>
+    <Teleport to="body">
+      <div
+        v-if="selectedCitizen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        @click.self="closeProfile"
+      >
+        <div
+          class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+        >
+          <!-- Header -->
+          <div
+            class="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-t-2xl px-6 py-6 text-center"
+          >
+            <button
+              @click="closeProfile"
+              class="absolute top-4 right-4 p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <X :size="18" />
+            </button>
+
+            <!-- Avatar -->
+            <div
+              :class="[
+                'w-16 h-16 rounded-full flex items-center justify-center text-[22px] font-bold mx-auto mb-3 ring-4 ring-white/15',
+                selectedCitizen.avatarColor,
+              ]"
+            >
+              {{ selectedCitizen.initials }}
+            </div>
+            <h2 class="text-white text-[18px] font-bold">
+              {{ selectedCitizen.name }}
+            </h2>
+            <p
+              class="text-white/50 text-[13px] flex items-center justify-center gap-1 mt-1"
+            >
+              <MapPin :size="12" />
+              {{ selectedCitizen.ward }}, {{ selectedCitizen.district }}
+            </p>
+            <p
+              class="text-white/40 text-[12px] flex items-center justify-center gap-1 mt-0.5"
+            >
+              <Phone :size="11" />
+              {{ selectedCitizen.phone }}
+            </p>
+
+            <!-- Điểm nổi bật -->
+            <div class="flex items-center justify-center gap-4 mt-4">
+              <div class="text-center">
+                <div class="flex items-center justify-center gap-1">
+                  <Star :size="14" class="text-[#FFC627]" fill="#FFC627" />
+                  <span class="text-[#FFC627] text-[22px] font-extrabold">{{
+                    selectedCitizen.periodPoints
+                  }}</span>
+                </div>
+                <span class="text-white/40 text-[11px]">Điểm kỳ này</span>
+              </div>
+              <div class="w-px h-8 bg-white/10"></div>
+              <div class="text-center">
+                <span class="text-white text-[22px] font-extrabold">{{
+                  selectedCitizen.totalPoints
+                }}</span>
+                <p class="text-white/40 text-[11px]">Tổng tích lũy</p>
+              </div>
+              <div class="w-px h-8 bg-white/10"></div>
+              <div class="text-center">
+                <span class="text-emerald-400 text-[22px] font-extrabold"
+                  >{{ selectedCitizen.rate }}%</span
+                >
+                <p class="text-white/40 text-[11px]">Tỷ lệ duyệt</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="p-6 space-y-5">
+            <!-- Thống kê PA -->
+            <div class="flex items-center gap-3">
+              <div class="flex-1 bg-blue-50 rounded-xl p-3 text-center">
+                <p class="text-blue-700 text-[20px] font-bold">
+                  {{ selectedCitizen.submitted }}
+                </p>
+                <p class="text-blue-500 text-[11px]">Đã gửi</p>
+              </div>
+              <div class="flex-1 bg-emerald-50 rounded-xl p-3 text-center">
+                <p class="text-emerald-700 text-[20px] font-bold">
+                  {{ selectedCitizen.approved }}
+                </p>
+                <p class="text-emerald-500 text-[11px]">Được duyệt</p>
+              </div>
+              <div class="flex-1 bg-red-50 rounded-xl p-3 text-center">
+                <p class="text-red-700 text-[20px] font-bold">
+                  {{ selectedCitizen.submitted - selectedCitizen.approved }}
+                </p>
+                <p class="text-red-500 text-[11px]">Bị từ chối</p>
+              </div>
+            </div>
+
+            <!-- Điểm theo tháng -->
+            <div>
+              <h4
+                class="text-slate-800 text-[14px] font-semibold mb-2.5 flex items-center gap-1.5"
+              >
+                <Calendar :size="14" class="text-slate-400" /> Điểm theo tháng
+              </h4>
+              <div class="space-y-2">
+                <div
+                  v-for="m in selectedCitizen.monthlyPoints"
+                  :key="m.month"
+                  class="flex items-center gap-3"
+                >
+                  <span class="text-[12px] text-slate-500 w-16">{{
+                    m.month
+                  }}</span>
+                  <div
+                    class="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden"
+                  >
+                    <div
+                      class="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all"
+                      :style="{
+                        width:
+                          Math.min(
+                            100,
+                            (m.points /
+                              Math.max(
+                                ...selectedCitizen.monthlyPoints.map(
+                                  (x) => x.points,
+                                ),
+                              )) *
+                              100,
+                          ) + '%',
+                      }"
+                    ></div>
+                  </div>
+                  <span
+                    class="text-[12px] font-semibold text-slate-700 w-10 text-right"
+                    >{{ m.points }}</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Điểm theo quý -->
+            <div>
+              <h4
+                class="text-slate-800 text-[14px] font-semibold mb-2.5 flex items-center gap-1.5"
+              >
+                <TrendingUpIcon :size="14" class="text-slate-400" /> Điểm theo
+                quý
+              </h4>
+              <div class="flex items-center gap-3">
+                <div
+                  v-for="q in selectedCitizen.quarterlyPoints"
+                  :key="q.quarter"
+                  class="flex-1 bg-slate-50 rounded-xl p-3 text-center"
+                >
+                  <p class="text-slate-800 text-[18px] font-bold">
+                    {{ q.points }}
+                  </p>
+                  <p class="text-slate-400 text-[11px]">{{ q.quarter }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Phản ánh tiêu biểu -->
+            <div>
+              <h4
+                class="text-slate-800 text-[14px] font-semibold mb-2.5 flex items-center gap-1.5"
+              >
+                <FileText :size="14" class="text-slate-400" /> Phản ánh tiêu
+                biểu
+              </h4>
+              <div class="space-y-2">
+                <div
+                  v-for="t in selectedCitizen.topTickets"
+                  :key="t.code"
+                  class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
+                >
+                  <div class="flex-1 min-w-0">
+                    <span
+                      class="text-[#DA251D] font-mono text-[12px] font-bold"
+                      >{{ t.code }}</span
+                    >
+                    <p class="text-slate-700 text-[12px] truncate mt-0.5">
+                      {{ t.title }}
+                    </p>
+                  </div>
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0"
+                    :class="getStatusLabel(t.status).class"
+                  >
+                    {{ getStatusLabel(t.status).label }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div
+            class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl"
+          >
+            <button
+              @click="closeProfile"
+              class="w-full py-2.5 rounded-xl text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -515,14 +732,46 @@ import {
   Star,
   Award,
   Search,
-  Download,
   Users,
   TrendingUp,
   Target,
   Info,
   Crown,
   CheckCircle2,
+  X,
+  MapPin,
+  Phone,
+  Calendar,
+  FileText,
+  TrendingUp as TrendingUpIcon,
 } from "lucide-vue-next";
+
+// ── Modal hồ sơ công dân ──
+const selectedCitizen = ref(null);
+
+function openProfile(citizen) {
+  selectedCitizen.value = citizen;
+}
+
+function closeProfile() {
+  selectedCitizen.value = null;
+}
+
+function getCitizenDetail(c) {
+  return c;
+}
+
+function getStatusLabel(status) {
+  const map = {
+    Closed: { label: "Đã đóng", class: "bg-slate-100 text-slate-500" },
+    PendingVerification: {
+      label: "Chờ xác minh",
+      class: "bg-violet-50 text-violet-700",
+    },
+    InProgress: { label: "Đang xử lý", class: "bg-amber-50 text-amber-700" },
+  };
+  return map[status] || { label: status, class: "bg-slate-100 text-slate-600" };
+}
 
 const activePeriod = ref("month");
 const searchQuery = ref("");
@@ -547,6 +796,7 @@ const AVATAR_COLORS = [
 const leaderboard = [
   {
     rank: 1,
+    id: "citizen1",
     name: "Võ Thị Phương",
     initials: "TP",
     phone: "0905555555",
@@ -558,9 +808,37 @@ const leaderboard = [
     approved: 16,
     rate: 89,
     avatarColor: AVATAR_COLORS[0],
+    monthlyPoints: [
+      { month: "01/2026", points: 25 },
+      { month: "02/2026", points: 35 },
+      { month: "03/2026", points: 45 },
+      { month: "04/2026", points: 85 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 105 },
+      { quarter: "Q2/2026", points: 85 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-003",
+        title: "Cống thoát nước tắc nghẽn tại Phường 2",
+        status: "Closed",
+      },
+      {
+        code: "PA-032026-011",
+        title: "Đèn chiếu sáng hư hỏng trên đường Lê Lợi",
+        status: "Closed",
+      },
+      {
+        code: "PA-032026-005",
+        title: "Ổ gà nguy hiểm tại ngã tư Nguyễn Huệ",
+        status: "PendingVerification",
+      },
+    ],
   },
   {
     rank: 2,
+    id: "citizen2",
     name: "Nguyễn Văn An",
     initials: "VA",
     phone: "0904444444",
@@ -572,9 +850,37 @@ const leaderboard = [
     approved: 12,
     rate: 80,
     avatarColor: AVATAR_COLORS[1],
+    monthlyPoints: [
+      { month: "01/2026", points: 30 },
+      { month: "02/2026", points: 40 },
+      { month: "03/2026", points: 53 },
+      { month: "04/2026", points: 72 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 123 },
+      { quarter: "Q2/2026", points: 72 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-012",
+        title: "Lấn chiếm vỉa hè kinh doanh tại chợ Phường 1",
+        status: "Closed",
+      },
+      {
+        code: "PA-022026-008",
+        title: "Rác thải sinh hoạt đổ trộm ven đường",
+        status: "Closed",
+      },
+      {
+        code: "PA-012026-022",
+        title: "Cây xanh ngã đổ cản trở giao thông",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 3,
+    id: "citizen3",
     name: "Trần Minh Hoàng",
     initials: "MH",
     phone: "0906666666",
@@ -586,9 +892,37 @@ const leaderboard = [
     approved: 13,
     rate: 93,
     avatarColor: AVATAR_COLORS[2],
+    monthlyPoints: [
+      { month: "01/2026", points: 30 },
+      { month: "02/2026", points: 35 },
+      { month: "03/2026", points: 50 },
+      { month: "04/2026", points: 65 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 115 },
+      { quarter: "Q2/2026", points: 65 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-045",
+        title: "Tiếng ồn quá mức từ cơ sở mộc sau 22h",
+        status: "InProgress",
+      },
+      {
+        code: "PA-032026-033",
+        title: "Đường dây điện chùng xuống gần nhà dân",
+        status: "Closed",
+      },
+      {
+        code: "PA-022026-015",
+        title: "Nắp hố ga bị mất trộm gây nguy hiểm",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 4,
+    id: "citizen4",
     name: "Lê Thị Kim Ngân",
     initials: "KN",
     phone: "0907777777",
@@ -600,9 +934,37 @@ const leaderboard = [
     approved: 10,
     rate: 83,
     avatarColor: AVATAR_COLORS[3],
+    monthlyPoints: [
+      { month: "01/2026", points: 25 },
+      { month: "02/2026", points: 35 },
+      { month: "03/2026", points: 40 },
+      { month: "04/2026", points: 55 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 100 },
+      { quarter: "Q2/2026", points: 55 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-088",
+        title: "Xe tải đỗ trái phép cản trở ngõ ra vào",
+        status: "PendingVerification",
+      },
+      {
+        code: "PA-032026-067",
+        title: "Đốt rác gây khói mù mịt khu dân cư",
+        status: "Closed",
+      },
+      {
+        code: "PA-022026-044",
+        title: "Biển báo giao thông bị che khuất",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 5,
+    id: "citizen5",
     name: "Phạm Quốc Đạt",
     initials: "QĐ",
     phone: "0908888888",
@@ -614,9 +976,37 @@ const leaderboard = [
     approved: 9,
     rate: 82,
     avatarColor: AVATAR_COLORS[4],
+    monthlyPoints: [
+      { month: "01/2026", points: 20 },
+      { month: "02/2026", points: 30 },
+      { month: "03/2026", points: 40 },
+      { month: "04/2026", points: 50 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 90 },
+      { quarter: "Q2/2026", points: 50 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-112",
+        title: "Nước sinh hoạt có mùi lạ, màu đục",
+        status: "InProgress",
+      },
+      {
+        code: "PA-022026-089",
+        title: "Hành vi xả thải trực tiếp xuống kênh",
+        status: "Closed",
+      },
+      {
+        code: "PA-012026-055",
+        title: "Đường nông thôn bị sạt lở sau mưa lớn",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 6,
+    id: "citizen6",
     name: "Huỳnh Thanh Tâm",
     initials: "TT",
     phone: "0909111222",
@@ -628,9 +1018,37 @@ const leaderboard = [
     approved: 8,
     rate: 80,
     avatarColor: AVATAR_COLORS[5],
+    monthlyPoints: [
+      { month: "01/2026", points: 25 },
+      { month: "02/2026", points: 30 },
+      { month: "03/2026", points: 30 },
+      { month: "04/2026", points: 45 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 85 },
+      { quarter: "Q2/2026", points: 45 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-145",
+        title: "Công trình xây dựng không che chắn bụi",
+        status: "Closed",
+      },
+      {
+        code: "PA-032026-123",
+        title: "Đàn chó thả rông gây nguy hiểm trong công viên",
+        status: "Closed",
+      },
+      {
+        code: "PA-012026-098",
+        title: "Biển quảng cáo sai quy định chắn tầm nhìn",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 7,
+    id: "citizen7",
     name: "Đặng Văn Phúc",
     initials: "VP",
     phone: "0909333444",
@@ -642,9 +1060,37 @@ const leaderboard = [
     approved: 7,
     rate: 78,
     avatarColor: AVATAR_COLORS[6],
+    monthlyPoints: [
+      { month: "01/2026", points: 20 },
+      { month: "02/2026", points: 25 },
+      { month: "03/2026", points: 30 },
+      { month: "04/2026", points: 40 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 75 },
+      { quarter: "Q2/2026", points: 40 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-166",
+        title: "Hư hỏng thiết bị tập thể dục tại công viên",
+        status: "PendingVerification",
+      },
+      {
+        code: "PA-022026-154",
+        title: "Tụ tập buôn bán hàng rong trước cổng trường",
+        status: "Closed",
+      },
+      {
+        code: "PA-022026-132",
+        title: "Đường ống cấp nước bị vỡ rò rỉ trên vỉa hè",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 8,
+    id: "citizen8",
     name: "Bùi Thị Hồng",
     initials: "TH",
     phone: "0909555666",
@@ -656,9 +1102,37 @@ const leaderboard = [
     approved: 6,
     rate: 75,
     avatarColor: AVATAR_COLORS[7],
+    monthlyPoints: [
+      { month: "01/2026", points: 15 },
+      { month: "02/2026", points: 25 },
+      { month: "03/2026", points: 25 },
+      { month: "04/2026", points: 35 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 65 },
+      { quarter: "Q2/2026", points: 35 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-201",
+        title: "Khói bụi mịt mù từ lò gạch thủ công",
+        status: "InProgress",
+      },
+      {
+        code: "PA-032026-188",
+        title: "Cầu dân sinh có dấu hiệu nứt mố cầu",
+        status: "Closed",
+      },
+      {
+        code: "PA-012026-176",
+        title: "Kênh mương nội đồng bị bồi lấp",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 9,
+    id: "citizen9",
     name: "Cao Minh Trí",
     initials: "MT",
     phone: "0909777888",
@@ -670,9 +1144,37 @@ const leaderboard = [
     approved: 5,
     rate: 71,
     avatarColor: AVATAR_COLORS[8],
+    monthlyPoints: [
+      { month: "01/2026", points: 10 },
+      { month: "02/2026", points: 25 },
+      { month: "03/2026", points: 25 },
+      { month: "04/2026", points: 30 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 60 },
+      { quarter: "Q2/2026", points: 30 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-234",
+        title: "Quán karaoke hoạt động quá giờ quy định",
+        status: "Closed",
+      },
+      {
+        code: "PA-022026-222",
+        title: "Trụ đèn giao thông nhấp nháy liên tục",
+        status: "Closed",
+      },
+      {
+        code: "PA-012026-205",
+        title: "Rễ cây làm bong tróc lớp gạch vỉa hè",
+        status: "Closed",
+      },
+    ],
   },
   {
     rank: 10,
+    id: "citizen10",
     name: "Ngô Thị Mai Anh",
     initials: "MA",
     phone: "0909999000",
@@ -684,6 +1186,33 @@ const leaderboard = [
     approved: 5,
     rate: 83,
     avatarColor: AVATAR_COLORS[9],
+    monthlyPoints: [
+      { month: "01/2026", points: 10 },
+      { month: "02/2026", points: 20 },
+      { month: "03/2026", points: 20 },
+      { month: "04/2026", points: 25 },
+    ],
+    quarterlyPoints: [
+      { quarter: "Q1/2026", points: 50 },
+      { quarter: "Q2/2026", points: 25 },
+    ],
+    topTickets: [
+      {
+        code: "PA-042026-267",
+        title: "Rác y tế vứt bừa bãi tại bãi rác sinh hoạt",
+        status: "PendingVerification",
+      },
+      {
+        code: "PA-032026-255",
+        title: "Tuyến đê bao có hiện tượng sụt lún",
+        status: "Closed",
+      },
+      {
+        code: "PA-022026-241",
+        title: "Bãi tập kết vật liệu xây dựng lấn chiếm lề đường",
+        status: "Closed",
+      },
+    ],
   },
 ];
 

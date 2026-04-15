@@ -8,5 +8,7 @@
 
         public string Password { get; set; } = null!;
         // Mật khẩu người dùng nhập
+
+        public bool RememberMe { get; set; } = false;
     }
 }

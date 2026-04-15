@@ -11,7 +11,7 @@ public class CreateDepartmentRequest
     // Ví dụ: "UBND-P1"
 
     public string Level { get; set; } = null!;
-    // Cấp hành chính: Province, District, Commune
+    // Cấp hành chính: Province, Commune
 
     public string? ParentId { get; set; }
     // ID đơn vị cấp trên

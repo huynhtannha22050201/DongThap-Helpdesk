@@ -1,8 +1,8 @@
 ﻿using DongThapHelpdesk.Api.DTOs.Auth;
 using DongThapHelpdesk.Api.Services;
 using DongThapHelpdesk.Api.Extensions;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DongThapHelpdesk.Api.Repositories;
 
 namespace DongThapHelpdesk.Api.Controllers;
 
@@ -11,10 +11,12 @@ namespace DongThapHelpdesk.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly UserRepository _userRepo;
 
-    public AuthController(AuthService authService)
+    public AuthController(AuthService authService, UserRepository userRepo)
     {
         _authService = authService;
+        _userRepo = userRepo;
     }
 
     /// <summary>Đăng nhập bằng số điện thoại</summary>
@@ -37,19 +39,26 @@ public class AuthController : ControllerBase
         if (!result.Success)
             return Unauthorized(result);
 
-        Response.Cookies.Append("access_token", result.Token!, new CookieOptions
+        var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
             Secure = false,
             SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UtcNow.AddHours(8)
-        });
+        };
+
+        if (request.RememberMe)
+        {
+            // Ghi nhớ → cookie sống 7 ngày
+            cookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(7);
+        }
+
+        Response.Cookies.Append("access_token", result.Token!, cookieOptions);
 
         return Ok(new
         {
             result.Success,
             result.Message,
-            result.Token,
+            //result.Token,
             result.User
         });
     }
@@ -64,16 +73,29 @@ public class AuthController : ControllerBase
 
     /// <summary>Lấy thông tin người dùng hiện tại</summary>
     [HttpGet("me")]
-    [Authorize]
-    public IActionResult Me()
+    public async Task<IActionResult> Me()
     {
-        return Ok(new UserInfo
+        var userId = User.GetUserId();
+        if (string.IsNullOrEmpty(userId))
+            return Ok(new { authenticated = false });
+
+        // Query DB để lấy thêm CitizenProfile (address, ward)
+        var user = await _userRepo.GetByIdAsync(userId);
+
+        return Ok(new
         {
-            Id = User.GetUserId(),
-            FullName = User.GetFullName(),
-            Email = User.GetEmail(),
-            PhoneNumber = User.GetPhoneNumber(),
-            Role = User.GetRole()
+            authenticated = true,
+            user = new UserInfo
+            {
+                Id = userId,
+                FullName = User.GetFullName(),
+                Email = User.GetEmail(),
+                PhoneNumber = User.GetPhoneNumber(),
+                Role = User.GetRole(),
+                DepartmentId = User.GetDepartmentId(),
+                Address = user?.CitizenProfile?.Address,
+                Ward = user?.CitizenProfile?.Ward,
+            }
         });
     }
 

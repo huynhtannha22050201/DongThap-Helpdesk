@@ -18,18 +18,6 @@ public class CategoriesController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh mục dạng cây phân cấp
-    /// Công khai - dùng khi người dân chọn loại báo cáo
-    /// </summary>
-    [HttpGet("tree")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetTree()
-    {
-        var result = await _service.GetTreeAsync();
-        return Ok(result);
-    }
-
-    /// <summary>
     /// Lấy danh mục dạng phẳng
     /// Công khai - dùng trong dropdown
     /// </summary>
@@ -76,6 +64,32 @@ public class CategoriesController : ControllerBase
             nameof(GetById),
             new { id = data!.Id },
             data);
+    }
+
+    [HttpGet("paged")]
+    [Authorize(Roles = Roles.AdminAndDispatcher)]
+    public async Task<IActionResult> GetPaged(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 5,
+    [FromQuery] string? search = null,
+    [FromQuery] bool? isActive = null,
+    [FromQuery] string? sortField = null,   
+    [FromQuery] string? sortDir = null)      
+    {
+        var (items, total) = await _service
+            .GetPagedAsync(page, pageSize, search, isActive, sortField, sortDir);
+
+        var totalAll = await _service.GetStatsAsync();
+
+        return Ok(new
+        {
+            items,
+            total,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling(total / (double)pageSize),
+            stats = totalAll
+        });
     }
 
     /// <summary>

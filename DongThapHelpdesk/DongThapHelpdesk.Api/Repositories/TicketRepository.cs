@@ -80,4 +80,8 @@ public class TicketRepository
        UpdateDefinition<Ticket> update)
        => await _collection.UpdateOneAsync(
            t => t.Id == id, update);
+
+    public async Task<long> CountByDepartmentAsync(string departmentId)
+        => await _collection.CountDocumentsAsync(
+            t => t.AssignedDepartmentId == departmentId);
 }

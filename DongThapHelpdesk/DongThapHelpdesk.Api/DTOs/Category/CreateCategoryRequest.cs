@@ -9,11 +9,8 @@ public class CreateCategoryRequest
     public string Code { get; set; } = null!;
     // Mã viết tắt
     // Ví dụ: "MT-RAC"
-
-    public string? ParentCategoryId { get; set; }
-    // ID danh mục cha
-    // Null nếu là danh mục gốc
-
     public int DefaultSlaHours { get; set; } = 72;
     // Số giờ xử lý mặc định
+
+    public string? Description {  get; set; }
 }

@@ -84,6 +84,15 @@ public class UsersController : ControllerBase
             : BadRequest(new { message });
     }
 
+    //[HttpGet("{staff}")]
+    //[Authorize(Roles = Roles.DispatcherAndManager)]
+    //public async Task<IActionResult> GetStaffByDepartment()
+    //{
+    //    var userId = User.GetUserId();
+    //    var result = await _service.GetStaffByDepartment(userId);
+    //    return Ok(result);
+    //}
+
     // ── Cập nhật thông tin ────────────────────────────────
 
     /// <summary>

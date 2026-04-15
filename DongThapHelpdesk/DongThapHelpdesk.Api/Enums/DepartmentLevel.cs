@@ -1,4 +1,4 @@
 ﻿namespace DongThapHelpdesk.Api.Enums
 {
-    public enum DepartmentLevel { Province, District, Commune }
+    public enum DepartmentLevel { Province, Commune }
 }

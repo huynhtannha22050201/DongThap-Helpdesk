@@ -4,14 +4,9 @@ import api from "@/services/api";
 
 export const useAuthStore = defineStore("auth", () => {
   // ── State ───────────────────────────────────────────────
-  // TODO: Xóa mock data này khi gắn API thật
-  const user = ref({
-    fullName: "Nguyễn Văn An",
-    role: "Dispatcher", // Đổi thành 'Dispatcher', 'Assignee', 'Manager' để test
-    phoneNumber: "0901234567",
-    email: "admin@dongthap.gov.vn",
-  });
+  const user = ref(null);
   const isLoading = ref(false);
+  const _initialized = ref(false);
 
   // ── Getters ─────────────────────────────────────────────
   const isLoggedIn = computed(() => !!user.value);
@@ -30,15 +25,19 @@ export const useAuthStore = defineStore("auth", () => {
   );
 
   // ── Actions ─────────────────────────────────────────────
-  async function login(phoneNumber, password) {
+  async function login(phoneNumber, password, rememberMe = false) {
     isLoading.value = true;
     try {
       const { data } = await api.post("/auth/login", {
         phoneNumber,
         password,
+        rememberMe,
       });
-      user.value = data.user;
-      return { success: true };
+      if (data.success) {
+        user.value = data.user;
+        return { success: true };
+      }
+      return { success: false, message: data.message };
     } catch (error) {
       const msg = error.response?.data?.message || "Đăng nhập thất bại";
       return { success: false, message: msg };
@@ -47,18 +46,30 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
+  async function initialize() {
+    if (_initialized.value) return; // Đã fetch rồi → bỏ qua, không gọi API nữa
+    _initialized.value = true;
+    try {
+      const { data } = await api.get("/auth/me");
+      user.value = data.user ?? null;
+    } catch {
+      user.value = null; // 401 = chưa login → im lặng, KHÔNG redirect
+    }
+  }
+
   async function logout() {
     try {
       await api.post("/auth/logout");
     } finally {
       user.value = null;
+      _initialized.value = false; // Reset cờ để lần đăng nhập sau fetch lại
     }
   }
 
   async function fetchMe() {
     try {
       const { data } = await api.get("/auth/me");
-      user.value = data;
+      user.value = data.user ?? null;
     } catch {
       user.value = null;
     }
@@ -76,6 +87,7 @@ export const useAuthStore = defineStore("auth", () => {
     isManager,
     isCitizen,
     isStaff,
+    initialize,
     login,
     logout,
     fetchMe,

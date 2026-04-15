@@ -195,7 +195,7 @@ const currentPageTitle = computed(() => {
     MapView: "Bản đồ phản ánh",
     UserManagement: "Quản lý người dùng",
     CategoryManagement: "Quản lý danh mục",
-    DepartmentManagement: "Quản lý phòng ban",
+    DepartmentManagement: "Quản lý đơn vị",
     CitizenLeaderboard: "BXH Công dân",
   };
   return titles[route.name] || "";
@@ -276,7 +276,7 @@ const menuGroups = [
         roles: ["Admin", "Dispatcher"],
       },
       {
-        label: "Quản lý phòng ban",
+        label: "Quản lý đơn vị",
         to: "/admin/phong-ban",
         icon: Building2,
         roles: ["Admin"],

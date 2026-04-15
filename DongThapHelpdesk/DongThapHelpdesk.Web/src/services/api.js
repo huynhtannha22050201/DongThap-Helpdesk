@@ -14,9 +14,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
+    const url = error.config?.url;
 
     if (status === 401) {
       // Token hết hạn hoặc chưa đăng nhập
+      if (url === "/auth/me") {
+        return Promise.reject(error);
+      }
       router.push({ name: "Login" });
     }
 

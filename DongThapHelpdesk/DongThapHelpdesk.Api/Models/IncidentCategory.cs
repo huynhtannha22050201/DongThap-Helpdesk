@@ -11,10 +11,7 @@ public class IncidentCategory
     public string Id { get; set; }
     public string Name { get; set; }
     public string Code { get; set; }
-
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string? ParentCategoryId { get; set; }
-
     public int DefaultSlaHours { get; set; } = 72;
     public bool IsActive { get; set; } = true;
+    public string? Description { get ; set; }
 }

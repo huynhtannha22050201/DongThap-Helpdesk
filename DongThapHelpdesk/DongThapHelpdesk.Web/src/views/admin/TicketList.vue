@@ -700,7 +700,7 @@ function resetFilters() {
 }
 
 function goToDetail(id) {
-  router.push(`/admin/tickets/${id}`);
+  router.push({ name: "TicketDetail", params: { id } });
 }
 
 function exportCsv() {

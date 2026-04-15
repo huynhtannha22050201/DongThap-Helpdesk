@@ -16,7 +16,7 @@ public class DepartmentRepository
     public async Task<List<Department>> GetAllAsync()
         => await _collection
             .Find(_ => true)
-            .SortBy(d => d.Name)
+            .SortByDescending(d => d.CreatedAt)
             .ToListAsync();
 
     public async Task<List<Department>> GetActiveAsync()
@@ -49,5 +49,58 @@ public class DepartmentRepository
         var result = await _collection.UpdateOneAsync(
             d => d.Id == id, update);
         return result.ModifiedCount > 0;
+    }
+
+    public async Task<List<Department>> GetPagedAsync(
+    int page, int pageSize, string? search = null, bool? isActive = null)
+    {
+        var filter = Builders<Department>.Filter.Empty;
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            filter = Builders<Department>.Filter.Or(
+                Builders<Department>.Filter.Regex(c => c.Name, new MongoDB.Bson.BsonRegularExpression(search, "i")),
+                Builders<Department>.Filter.Regex(c => c.Code, new MongoDB.Bson.BsonRegularExpression(search, "i"))
+            );
+        }
+
+        // Lọc trạng thái nếu có
+        if (isActive.HasValue)
+        {
+            var activeFilter = Builders<Department>.Filter.Eq(c => c.IsActive, isActive.Value);
+            filter = filter == Builders<Department>.Filter.Empty
+                ? activeFilter
+                : Builders<Department>.Filter.And(filter, activeFilter);
+        }
+
+        return await _collection
+            .Find(filter)
+            .SortByDescending(c => c.Id)
+            .Skip((page - 1) * pageSize)
+            .Limit(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<long> CountAsync(string? search = null, bool? isActive = null)
+    {
+        var filter = Builders<Department>.Filter.Empty;
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            filter = Builders<Department>.Filter.Or(
+                Builders<Department>.Filter.Regex(c => c.Name, new MongoDB.Bson.BsonRegularExpression(search, "i")),
+                Builders<Department>.Filter.Regex(c => c.Code, new MongoDB.Bson.BsonRegularExpression(search, "i"))
+            );
+        }
+
+        if (isActive.HasValue)
+        {
+            var activeFilter = Builders<Department>.Filter.Eq(c => c.IsActive, isActive.Value);
+            filter = filter == Builders<Department>.Filter.Empty
+                ? activeFilter
+                : Builders<Department>.Filter.And(filter, activeFilter);
+        }
+
+        return await _collection.CountDocumentsAsync(filter);
     }
 }

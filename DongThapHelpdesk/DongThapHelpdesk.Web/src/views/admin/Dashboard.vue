@@ -322,10 +322,9 @@
             <div class="flex items-start justify-between gap-3 mb-2">
               <div>
                 <div class="flex items-center gap-2 mb-1">
-                  <span
-                    class="font-mono text-[#DA251D] text-[13px] font-medium"
-                    >{{ t.code }}</span
-                  >
+                  <span class="text-xs font-bold text-red-600">{{
+                    t.code
+                  }}</span>
                   <span
                     :class="[
                       'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
@@ -372,17 +371,20 @@
             <div class="flex items-center gap-2 mt-3">
               <button
                 v-if="t.status === 'Assigned'"
+                @click="handleStartProgress(t)"
                 class="px-3 py-1.5 rounded-lg bg-[#DA251D] text-white text-[12px] font-medium hover:bg-[#b81f18] transition-colors cursor-pointer"
               >
                 <Play :size="12" class="inline mr-1" /> Bắt đầu xử lý
               </button>
               <button
                 v-if="t.status === 'InProgress'"
+                @click="handleSubmitResult(t)"
                 class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 transition-colors cursor-pointer"
               >
                 <Send :size="12" class="inline mr-1" /> Báo cáo kết quả
               </button>
               <button
+                @click="goToDetail(t.id)"
                 class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 text-[12px] font-medium hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Xem chi tiết
@@ -451,11 +453,12 @@
             <tr
               v-for="t in recentTickets"
               :key="t.code"
+              @click="goToDetail(t.code)"
               class="hover:bg-slate-50/60 transition-colors cursor-pointer group border-b border-slate-50 last:border-0"
             >
               <td class="px-4 py-3.5">
                 <span
-                  class="text-[#DA251D] font-mono group-hover:underline text-[13px] font-medium"
+                  class="text-xs font-bold text-red-600 group-hover:underline text-[13px] font-medium"
                   >{{ t.code }}</span
                 >
               </td>
@@ -517,7 +520,7 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import {
   Inbox,
@@ -542,9 +545,25 @@ import {
 } from "lucide-vue-next";
 
 const auth = useAuthStore();
+const router = useRouter();
 // Lấy role từ auth store, fallback 'Admin' khi chưa đăng nhập (dev mode)
 const role = computed(() => auth.userRole || "Dispatcher");
 
+function goToDetail(id) {
+  router.push({ name: "TicketDetail", params: { id } });
+}
+
+function handleStartProgress(ticket) {
+  alert(
+    `[Mock] Bắt đầu xử lý phản ánh ${ticket.code}.\nSẽ gọi PUT /api/tickets/${ticket.id}/inprogress khi gắn API.`,
+  );
+}
+
+function handleSubmitResult(ticket) {
+  alert(
+    `[Mock] Báo cáo kết quả phản ánh ${ticket.code}.\nSẽ gọi PUT /api/tickets/${ticket.id}/result khi gắn API.`,
+  );
+}
 // ── Page title theo role ──
 const pageTitle = computed(() => {
   const titles = {
@@ -866,6 +885,7 @@ const todayActivities = [
 // ── Assignee: my tickets ──
 const myTickets = [
   {
+    id: "t4",
     code: "PA-032026-010",
     title: "Mất nước sinh hoạt KDC Mỹ Trà 3 ngày",
     status: "InProgress",
@@ -875,6 +895,7 @@ const myTickets = [
     slaBreached: true,
   },
   {
+    id: "t10",
     code: "PA-032026-009",
     title: "Rác thải công nghiệp ven sông Tiền",
     status: "InProgress",
@@ -884,6 +905,7 @@ const myTickets = [
     slaBreached: false,
   },
   {
+    id: "t6",
     code: "PA-042026-006",
     title: "Cây xanh ngã đổ chắn đường Tôn Đức Thắng",
     status: "Assigned",
@@ -893,6 +915,7 @@ const myTickets = [
     slaBreached: false,
   },
   {
+    id: "t7",
     code: "PA-042026-007",
     title: "Vỉa hè bị lấn chiếm buôn bán trên đường Lê Duẩn",
     status: "Assigned",

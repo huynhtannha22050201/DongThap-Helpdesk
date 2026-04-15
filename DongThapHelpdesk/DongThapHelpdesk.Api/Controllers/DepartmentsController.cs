@@ -68,6 +68,24 @@ public class DepartmentsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy danh sách phòng ban có phân trang + lọc + thống kê
+    /// </summary>
+    [HttpGet("paged")]
+    [Authorize(Roles = Roles.StaffOnly)]
+    public async Task<IActionResult> GetPaged(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 5,
+    [FromQuery] string? search = null,
+    [FromQuery] bool? isActive = null,
+    [FromQuery] string? sortBy = null,
+    [FromQuery] string? sortDir = "desc")
+    {
+        var result = await _service.GetPagedAsync(
+            page, pageSize, search, isActive, sortBy, sortDir);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Cập nhật đơn vị
     /// Chỉ Admin
     /// </summary>

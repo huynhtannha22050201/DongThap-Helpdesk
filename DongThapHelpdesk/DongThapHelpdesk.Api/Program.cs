@@ -147,9 +147,10 @@ namespace DongThapHelpdesk.Api
             // ── Middleware Pipeline ───────────────────────────────────
             if (app.Environment.IsDevelopment())
             {
-                var seeder = new DatabaseSeeder(mongoSettings);
-                await seeder.ClearAllAsync();
+                var context = app.Services.GetRequiredService<MongoDbContext>();
+                var seeder = new DatabaseSeeder(context);
                 await seeder.SeedAsync();
+
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
