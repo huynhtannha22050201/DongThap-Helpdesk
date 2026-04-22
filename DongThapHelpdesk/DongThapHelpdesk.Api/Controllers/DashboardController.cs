@@ -7,7 +7,7 @@ namespace DongThapHelpdesk.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = Roles.AdminAndManager)]
+[Authorize(Roles = Roles.StaffOnly)]
 public class DashboardController : ControllerBase
 {
     private readonly DashboardService _service;
@@ -28,8 +28,9 @@ public class DashboardController : ControllerBase
     /// thời gian xử lý trung bình, tỷ lệ SLA
     /// </summary>
     [HttpGet("stats")]
-    public async Task<IActionResult> GetStats()
-        => Ok(await _service.GetStatsAsync());
+    public async Task<IActionResult> GetStats(
+    [FromQuery] string period = "month") // "week" | "month" | "quarter"
+    => Ok(await _service.GetStatsAsync(period));
 
     // ══════════════════════════════════════════════════════
     // UC12: BẢN ĐỒ NHIỆT

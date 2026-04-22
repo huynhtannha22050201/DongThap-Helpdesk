@@ -105,13 +105,40 @@ public class CategoryService
     }
 
     public async Task<(List<CategoryResponse> Items, long Total)>
-    GetPagedAsync(int page, int pageSize, string? search = null,
-    bool? isActive = null, string? sortField = null, string? sortDir = null)
+        GetPagedAsync(int page, int pageSize, string? search = null,
+        bool? isActive = null, string? sortField = null, string? sortDir = null)
     {
-        var items = await _repo.GetPagedAsync(page, pageSize, search, isActive, sortField, sortDir);
-        var total = await _repo.CountAsync(search, isActive);
+        var all = await _repo.GetAllFilteredAsync(search, isActive);
+        var total = all.Count;
 
-        var responses = items.Select(c => new CategoryResponse
+        // Sort theo field người dùng chọn
+        var isAsc = sortDir?.ToLower() != "desc";
+        IEnumerable<IncidentCategory> sorted = (sortField?.ToLower()) switch
+        {
+            "name" => isAsc ? all.OrderBy(c => c.Name) : all.OrderByDescending(c => c.Name),
+            "code" => isAsc ? all.OrderBy(c => c.Code) : all.OrderByDescending(c => c.Code),
+            "defaultslahours" => isAsc
+                ? all.OrderBy(c => c.DefaultSlaHours)
+                : all.OrderByDescending(c => c.DefaultSlaHours),
+            "isactive" => isAsc
+                ? all.OrderBy(c => c.IsActive)
+                : all.OrderByDescending(c => c.IsActive),
+            _ => all.OrderBy(c => c.Name), // Mặc định sort theo tên
+        };
+
+        // Đẩy "Khác" xuống cuối — dùng stable sort
+        var list = sorted.ToList();
+        var khac = list.Where(c => c.Name.Trim().ToLower() == "khác").ToList();
+        var rest = list.Where(c => c.Name.Trim().ToLower() != "khác").ToList();
+        rest.AddRange(khac); // "Khác" luôn nằm cuối
+
+        // Phân trang
+        var paged = rest
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        var responses = paged.Select(c => new CategoryResponse
         {
             Id = c.Id,
             Name = c.Name,

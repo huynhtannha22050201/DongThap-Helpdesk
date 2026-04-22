@@ -1,6 +1,8 @@
-﻿using MongoDB.Driver;
-using DongThapHelpdesk.Api.Data;
+﻿using DongThapHelpdesk.Api.Data;
+using DongThapHelpdesk.Api.Enums;
 using DongThapHelpdesk.Api.Models;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace DongThapHelpdesk.Api.Repositories;
 
@@ -70,6 +72,80 @@ public class UserRepository
         UpdateDefinition<AppUser> update)
         => await _collection.UpdateManyAsync(
             filter, update);
+    public async Task<bool> DeleteAsync(string id)
+    {
+        var result = await _collection.DeleteOneAsync(x => x.Id == id);
+        return result.DeletedCount > 0;
+    }
+
+    public async Task<(long Total, List<AppUser> Items)> GetPagedAsync(int page, int pageSize, string search, string role, string departmentId, bool? isActive, string sortField, string sortDir)
+    {
+        var builder = Builders<AppUser>.Filter;
+        var filter = builder.Empty;
+
+        // Tìm kiếm
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchRegex = new BsonRegularExpression(search, "i");
+            filter &= builder.Or(
+                builder.Regex(x => x.FullName, searchRegex),
+                builder.Regex(x => x.PhoneNumber, searchRegex),
+                builder.Regex(x => x.Email, searchRegex)
+            );
+        }
+
+        // Lọc
+        if (!string.IsNullOrEmpty(role))
+        {
+            // THAY ĐỔI Ở ĐÂY: Ép kiểu an toàn từ string sang Enum UserRole
+            if (Enum.TryParse<UserRole>(role, true, out var parsedRole))
+            {
+                filter &= builder.Eq(x => x.Role, parsedRole);
+            }
+        }
+        if (!string.IsNullOrEmpty(departmentId)) filter &= builder.Eq(x => x.DepartmentId, departmentId);
+        if (isActive.HasValue) filter &= builder.Eq(x => x.IsActive, isActive.Value);
+
+        var total = await _collection.CountDocumentsAsync(filter);
+
+        // Sắp xếp
+        var sort = sortDir == "desc"
+            ? Builders<AppUser>.Sort.Descending(sortField ?? "CreatedAt")
+            : Builders<AppUser>.Sort.Ascending(sortField ?? "CreatedAt");
+
+        // Phân trang
+        var items = await _collection.Find(filter)
+                                     .Sort(sort)
+                                     .Skip((page - 1) * pageSize)
+                                     .Limit(pageSize)
+                                     .ToListAsync();
+
+        return (total, items);
+    }
+
+    public async Task<(long Total, long Active, long Locked)> GetUserStatsAsync()
+    {
+        // Đếm tổng số user
+        var total = await _collection.CountDocumentsAsync(Builders<AppUser>.Filter.Empty);
+
+        // Đếm user đang hoạt động (IsActive == true)
+        var active = await _collection.CountDocumentsAsync(Builders<AppUser>.Filter.Eq(x => x.IsActive, true));
+
+        var locked = total - active;
+
+        return (total, active, locked);
+    }
+
+    public async Task<int> CountDistinctDepartmentsAsync()
+    {
+        // Lấy danh sách DepartmentId không trùng lặp từ tất cả users có departmentId
+        var result = await _collection
+            .DistinctAsync<string>("DepartmentId",
+                Builders<AppUser>.Filter.Ne(u => u.DepartmentId, null));
+
+        var list = await result.ToListAsync();
+        return list.Count(id => !string.IsNullOrEmpty(id));
+    }
 
     public async Task<List<AppUser>> GetMonthlyLeaderboardAsync(
         int top = 10)

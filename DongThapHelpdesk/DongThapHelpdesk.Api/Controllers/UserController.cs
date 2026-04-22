@@ -84,14 +84,25 @@ public class UsersController : ControllerBase
             : BadRequest(new { message });
     }
 
-    //[HttpGet("{staff}")]
-    //[Authorize(Roles = Roles.DispatcherAndManager)]
-    //public async Task<IActionResult> GetStaffByDepartment()
-    //{
-    //    var userId = User.GetUserId();
-    //    var result = await _service.GetStaffByDepartment(userId);
-    //    return Ok(result);
-    //}
+    [HttpGet("paged")]
+    [Authorize(Roles = Roles.AdminAndManager)] // Tùy chỉnh role theo ý bạn
+    public async Task<IActionResult> GetPagedUsers(
+    [FromQuery] int page = 1, [FromQuery] int limit = 5,
+    [FromQuery] string search = "", [FromQuery] string role = "",
+    [FromQuery] string departmentId = "", [FromQuery] bool? isActive = null,
+    [FromQuery] string sortField = "CreatedAt", [FromQuery] string sortDir = "desc")
+    {
+        var result = await _service.GetPagedUsersAsync(page, limit, search, role, departmentId, isActive, sortField, sortDir);
+        return Ok(new { success = true, data = result.Data });
+    }
+
+    [HttpGet("stats")]
+    [Authorize(Roles = Roles.AdminAndManager)]
+    public async Task<IActionResult> GetUserStats()
+    {
+        var result = await _service.GetUserStatsAsync();
+        return Ok(new { success = true, data = result.Data });
+    }
 
     // ── Cập nhật thông tin ────────────────────────────────
 
@@ -111,6 +122,18 @@ public class UsersController : ControllerBase
         return success
             ? Ok(new { message })
             : BadRequest(new { message });
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Admin)] // Dùng Roles constant từ file Constants/Roles.cs
+    public async Task<IActionResult> DeleteUser(string id)
+    {
+        var result = await _service.DeleteUserAsync(id);
+        if (!result.Success)
+        {
+            return BadRequest(new { success = false, message = result.Message });
+        }
+        return Ok(new { success = true, message = result.Message });
     }
 
     // ── Khóa/Mở khóa tài khoản ───────────────────────────

@@ -1,6 +1,7 @@
-﻿using MongoDB.Driver;
-using DongThapHelpdesk.Api.Data;
+﻿using DongThapHelpdesk.Api.Data;
 using DongThapHelpdesk.Api.Models;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace DongThapHelpdesk.Api.Repositories;
 
@@ -53,6 +54,27 @@ public class CategoryRepository
         var result = await _collection.UpdateOneAsync(
             c => c.Id == id, update);
         return result.ModifiedCount > 0;
+    }
+
+    public async Task<List<IncidentCategory>> GetAllFilteredAsync(
+    string? search = null, bool? isActive = null)
+    {
+        var builder = Builders<IncidentCategory>.Filter;
+        var filter = builder.Empty;
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var regex = new BsonRegularExpression(search, "i");
+            filter &= builder.Or(
+                builder.Regex(c => c.Name, regex),
+                builder.Regex(c => c.Code, regex)
+            );
+        }
+
+        if (isActive.HasValue)
+            filter &= builder.Eq(c => c.IsActive, isActive.Value);
+
+        return await _collection.Find(filter).ToListAsync();
     }
 
     public async Task<List<IncidentCategory>> GetPagedAsync(

@@ -56,6 +56,16 @@ public class DepartmentService
         return await MapToResponseAsync(department);
     }
 
+    public async Task<List<object>> GetActiveLightAsync()
+    {
+        var departments = await _repo.GetActiveAsync();
+        return departments.Select(d => (object)new
+        {
+            id = d.Id,
+            name = d.Name
+        }).ToList();
+    }
+
     public async Task<(bool Success, string Message,
         DepartmentResponse? Data)> CreateAsync(
         CreateDepartmentRequest request)

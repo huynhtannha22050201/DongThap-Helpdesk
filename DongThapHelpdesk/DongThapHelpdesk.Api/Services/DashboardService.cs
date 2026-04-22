@@ -31,172 +31,393 @@ public class DashboardService
     // UC13: THỐNG KÊ TỔNG QUAN
     // ══════════════════════════════════════════════════════
 
-    public async Task<object> GetStatsAsync()
+    public async Task<object> GetStatsAsync(string period = "month")
+{
+    var allTickets = await _ticketRepo.GetAllAsync();
+    var now = DateTime.UtcNow;
+
+    // ══════════════════════════════════════════════════════
+    // TÍNH KHOẢNG THỜI GIAN HIỆN TẠI + KỲ TRƯỚC
+    // ══════════════════════════════════════════════════════
+
+    DateTime currentStart, previousStart, previousEnd;
+
+    switch (period.ToLower())
     {
-        var allTickets = await _ticketRepo.GetAllAsync();
-        var now = DateTime.UtcNow;
-        var startOfMonth = new DateTime(
-            now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var startOfYear = new DateTime(
-            now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        case "week":
+            // Đầu tuần hiện tại (Monday)
+            var dayOfWeek = ((int)now.DayOfWeek + 6) % 7;
+            currentStart = new DateTime(
+                now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc)
+                .AddDays(-dayOfWeek);
+            previousStart = currentStart.AddDays(-7);
+            previousEnd = currentStart;
+            break;
 
-        // ── Thống kê theo trạng thái ──────────────────────
-        var byStatus = allTickets
-            .GroupBy(t => t.Status)
-            .ToDictionary(
-                g => g.Key.ToString(),
-                g => g.Count());
+        case "quarter":
+            var currentQuarter = (now.Month - 1) / 3;
+            currentStart = new DateTime(
+                now.Year, currentQuarter * 3 + 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            previousStart = currentStart.AddMonths(-3);
+            previousEnd = currentStart;
+            break;
 
-        // ── Thống kê theo danh mục ────────────────────────
-        var categories = await _categoryRepo.GetAllAsync();
-        var categoryMap = categories
-            .ToDictionary(c => c.Id, c => c.Name);
+        default: // "month"
+            currentStart = new DateTime(
+                now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            previousStart = currentStart.AddMonths(-1);
+            previousEnd = currentStart;
+            break;
+    }
 
-        var byCategory = allTickets
-            .Where(t => t.CategoryId != null)
-            .GroupBy(t => t.CategoryId!)
+    // Ticket kỳ hiện tại vs kỳ trước
+    var currentTickets = allTickets
+        .Where(t => t.CreatedAt >= currentStart).ToList();
+    var previousTickets = allTickets
+        .Where(t => t.CreatedAt >= previousStart
+                 && t.CreatedAt < previousEnd).ToList();
+
+    // ══════════════════════════════════════════════════════
+    // TÍNH TREND (% THAY ĐỔI SO VỚI KỲ TRƯỚC)
+    // ══════════════════════════════════════════════════════
+
+    int currentNew = currentTickets.Count;
+    int previousNew = previousTickets.Count;
+    double newTrend = previousNew > 0
+        ? Math.Round(
+            (double)(currentNew - previousNew) / previousNew * 100, 1)
+        : 0;
+
+    int currentClosed = currentTickets
+        .Count(t => t.Status == TicketStatus.Closed);
+    int previousClosed = previousTickets
+        .Count(t => t.Status == TicketStatus.Closed);
+    double closedTrend = previousClosed > 0
+        ? Math.Round(
+            (double)(currentClosed - previousClosed) / previousClosed * 100, 1)
+        : 0;
+
+    int currentBreached = currentTickets
+        .Count(t => t.IsSlaBreached);
+    int previousBreached = previousTickets
+        .Count(t => t.IsSlaBreached);
+    double breachedTrend = previousBreached > 0
+        ? Math.Round(
+            (double)(currentBreached - previousBreached) / previousBreached * 100, 1)
+        : 0;
+
+    var currentInProgress = currentTickets.Count(t =>
+        t.Status == TicketStatus.Assigned
+        || t.Status == TicketStatus.InProgress);
+    var previousInProgress = previousTickets.Count(t =>
+        t.Status == TicketStatus.Assigned
+        || t.Status == TicketStatus.InProgress);
+    double inProgressTrend = previousInProgress > 0
+        ? Math.Round(
+            (double)(currentInProgress - previousInProgress)
+            / previousInProgress * 100, 1)
+        : 0;
+
+    // "SLA Compliance" theo kỳ
+    var currentClosedTickets = currentTickets
+        .Where(t => t.Status == TicketStatus.Closed
+            && t.ClosedAt != null).ToList();
+    var currentSlaRate = currentClosedTickets.Count > 0
+        ? Math.Round(
+            (double)currentClosedTickets.Count(t => !t.IsSlaBreached)
+            / currentClosedTickets.Count * 100, 1)
+        : 0;
+
+    var previousClosedTickets = previousTickets
+        .Where(t => t.Status == TicketStatus.Closed
+            && t.ClosedAt != null).ToList();
+    var previousSlaRate = previousClosedTickets.Count > 0
+        ? Math.Round(
+            (double)previousClosedTickets.Count(t => !t.IsSlaBreached)
+            / previousClosedTickets.Count * 100, 1)
+        : 0;
+
+    double slaTrend = Math.Round(currentSlaRate - previousSlaRate, 1);
+
+    // ══════════════════════════════════════════════════════
+    // THỐNG KÊ THEO TRẠNG THÁI
+    // ══════════════════════════════════════════════════════
+
+    var byStatus = allTickets
+    .GroupBy(t => t.Status)
+    .ToDictionary(
+        g => g.Key.ToString(),
+        g => g.Count());
+
+    // ══════════════════════════════════════════════════════
+    // THỐNG KÊ THEO DANH MỤC
+    // ══════════════════════════════════════════════════════
+
+    var categories = await _categoryRepo.GetAllAsync();
+    var categoryMap = categories
+        .ToDictionary(c => c.Id, c => c.Name);
+
+    var byCategory = currentTickets
+        .Where(t => t.CategoryId != null)
+        .GroupBy(t => t.CategoryId!)
+        .Select(g => new
+        {
+            CategoryId = g.Key,
+            CategoryName = categoryMap
+                .GetValueOrDefault(g.Key, "Không xác định"),
+            Count = g.Count()
+        })
+        .OrderByDescending(x => x.Count)
+        .ToList();
+
+        // ══════════════════════════════════════════════════════
+        // THỐNG KÊ THEO ĐƠN VỊ XỬ LÝ
+        // ══════════════════════════════════════════════════════
+
+        var departments = await _departmentRepo.GetActiveAsync();
+    var deptMap = departments
+        .ToDictionary(d => d.Id, d => d.Name);
+
+    var byDepartment = allTickets
+        .Where(t => t.AssignedDepartmentId != null)
+        .GroupBy(t => t.AssignedDepartmentId!)
+        .Select(g => new
+        {
+            DepartmentId = g.Key,
+            DepartmentName = deptMap
+                .GetValueOrDefault(g.Key, "Không xác định"),
+            Total = g.Count(),
+            Closed = g.Count(t =>
+                t.Status == TicketStatus.Closed),
+            InProgress = g.Count(t =>
+                t.Status == TicketStatus.InProgress),
+            SlaBreached = g.Count(t => t.IsSlaBreached)
+        })
+        .OrderByDescending(x => x.Total)
+        .ToList();
+
+    // ══════════════════════════════════════════════════════
+    // THỐNG KÊ THEO MỨC ƯU TIÊN
+    // ══════════════════════════════════════════════════════
+
+    var byPriority = allTickets
+        .GroupBy(t => t.Priority)
+        .ToDictionary(
+            g => g.Key.ToString(),
+            g => g.Count());
+
+    // ══════════════════════════════════════════════════════
+    // THỜI GIAN XỬ LÝ TRUNG BÌNH + SLA COMPLIANCE
+    // ══════════════════════════════════════════════════════
+
+    var closedTickets = allTickets
+        .Where(t => t.Status == TicketStatus.Closed
+            && t.ClosedAt != null)
+        .ToList();
+
+    var avgResolutionHours = closedTickets.Any()
+        ? Math.Round(closedTickets
+            .Average(t =>
+                (t.ClosedAt!.Value - t.CreatedAt).TotalHours), 1)
+        : 0;
+
+    // ══════════════════════════════════════════════════════
+    // TỔNG SỐ NGƯỜI DÂN
+    // ══════════════════════════════════════════════════════
+
+    var citizenFilter = Builders<AppUser>.Filter
+        .Eq(u => u.Role, UserRole.Citizen);
+    var citizens = await _userRepo
+        .GetByFilterAsync(citizenFilter);
+
+    // ══════════════════════════════════════════════════════
+    // TRẢ VỀ RESPONSE
+    // ══════════════════════════════════════════════════════
+
+    return new
+    {
+        // ── Tổng quan toàn hệ thống ──────────────────
+        TotalTickets = allTickets.Count,
+        TotalClosed = allTickets
+            .Count(t => t.Status == TicketStatus.Closed),
+        TotalRejected = allTickets
+            .Count(t => t.Status == TicketStatus.Rejected),
+        TotalSlaBreached = allTickets
+            .Count(t => t.IsSlaBreached),
+        TotalCitizens = citizens.Count,
+        // "Đang xử lý" = Assigned + InProgress (đã giao cho Assignee)
+        TotalInProgress = allTickets.Count(t =>
+            t.Status == TicketStatus.Assigned
+            || t.Status == TicketStatus.InProgress),
+
+        // ── Theo kỳ hiện tại (period) ────────────────
+        TotalThisPeriod = currentNew,
+        TotalPreviousPeriod = previousNew,
+        ClosedThisPeriod = currentClosed,
+        BreachedThisPeriod = currentBreached,
+
+
+        // ── KPI THEO KỲ (period) ─────────────────────────
+        PeriodNew = currentNew,
+        PreviousNew = previousNew,
+        NewTrend = newTrend,
+
+        PeriodInProgress = currentInProgress,
+        PreviousInProgress = previousInProgress,
+        InProgressTrend = inProgressTrend,
+
+        PeriodClosed = currentClosed,
+        PreviousClosed = previousClosed,
+        ClosedTrend = closedTrend,
+
+        PeriodBreached = currentBreached,
+        PreviousBreached = previousBreached,
+        BreachedTrend = breachedTrend,
+
+        PeriodSlaRate = currentSlaRate,
+        PreviousSlaRate = previousSlaRate,
+        SlaTrend = slaTrend,
+
+        // ── Tỷ lệ ───────────────────────────────────
+        ClosedRate = allTickets.Count > 0
+            ? Math.Round(
+                (double)allTickets
+                    .Count(t => t.Status == TicketStatus.Closed)
+                / allTickets.Count * 100, 1)
+            : 0,
+
+        SlaComplianceRate = closedTickets.Count > 0
+            ? Math.Round(
+                (double)closedTickets
+                    .Count(t => !t.IsSlaBreached)
+                / closedTickets.Count * 100, 1)
+            : 0,
+
+        AvgResolutionHours = avgResolutionHours,
+
+        // ── Chi tiết ─────────────────────────────────
+        ByStatus = byStatus,
+        ByCategory = byCategory,
+        ByDepartment = byDepartment,
+        ByPriority = byPriority,
+
+        // ── Xu hướng 30 ngày ─────────────────────────
+        DailyTrend = allTickets
+            .Where(t => t.CreatedAt >= now.AddDays(-30))
+            .GroupBy(t => t.CreatedAt.Date)
+            .OrderBy(g => g.Key)
             .Select(g => new
             {
-                CategoryId = g.Key,
-                CategoryName = categoryMap
-                    .GetValueOrDefault(g.Key, "Không xác định"),
-                Count = g.Count()
-            })
-            .OrderByDescending(x => x.Count)
-            .ToList();
-
-        // ── Thống kê theo đơn vị xử lý ───────────────────
-        var departments = await _departmentRepo
-            .GetActiveAsync();
-        var deptMap = departments
-            .ToDictionary(d => d.Id, d => d.Name);
-
-        var byDepartment = allTickets
-            .Where(t => t.AssignedDepartmentId != null)
-            .GroupBy(t => t.AssignedDepartmentId!)
-            .Select(g => new
-            {
-                DepartmentId = g.Key,
-                DepartmentName = deptMap
-                    .GetValueOrDefault(g.Key, "Không xác định"),
-                Total = g.Count(),
+                Date = g.Key.ToString("yyyy-MM-dd"),
+                Created = g.Count(),
                 Closed = g.Count(t =>
                     t.Status == TicketStatus.Closed),
-                InProgress = g.Count(t =>
-                    t.Status == TicketStatus.InProgress),
-                SlaBreached = g.Count(t => t.IsSlaBreached)
+                SlaBreached = g.Count(t =>
+                    t.IsSlaBreached)
             })
-            .OrderByDescending(x => x.Total)
-            .ToList();
+            .ToList(),
 
-        // ── Thống kê theo mức ưu tiên ────────────────────
-        var byPriority = allTickets
-            .GroupBy(t => t.Priority)
-            .ToDictionary(
-                g => g.Key.ToString(),
-                g => g.Count());
+        // ── Xu hướng 12 tháng ────────────────────────
+        ChartTrend = BuildChartTrend(allTickets, now, period),
+    };
+}
 
-        // ── Thống kê tháng hiện tại ──────────────────────
-        var thisMonth = allTickets
-            .Where(t => t.CreatedAt >= startOfMonth)
-            .ToList();
-
-        // ── Thống kê năm hiện tại ────────────────────────
-        var thisYear = allTickets
-            .Where(t => t.CreatedAt >= startOfYear)
-            .ToList();
-
-        // ── Thời gian xử lý trung bình (giờ) ─────────────
-        var closedTickets = allTickets
-            .Where(t => t.Status == TicketStatus.Closed
-                && t.ClosedAt != null)
-            .ToList();
-
-        var avgResolutionHours = closedTickets.Any()
-            ? Math.Round(closedTickets
-                .Average(t =>
-                    (t.ClosedAt!.Value - t.CreatedAt)
-                        .TotalHours), 1)
-            : 0;
-
-        // ── Tổng số người dân đã đăng ký ─────────────────
-        var citizenFilter = Builders<AppUser>.Filter
-            .Eq(u => u.Role, UserRole.Citizen);
-        var citizens = await _userRepo
-            .GetByFilterAsync(citizenFilter);
-
-        return new
+    /// <summary>
+    /// Tạo dữ liệu biểu đồ cột theo period:
+    /// - week  → 7 ngày (Thứ 2 → CN)
+    /// - month → 12 tháng trong năm (T01 → T12)  
+    /// - quarter → 4 quý trong năm (Q1 → Q4)
+    /// "Đã xử lý" = Closed + PendingVerification
+    /// </summary>
+    private static List<object> BuildChartTrend(
+        List<Ticket> allTickets, DateTime now, string period)
+    {
+        var processedStatuses = new[]
         {
-            // ── Tổng quan ─────────────────────────────────
-            TotalTickets = allTickets.Count,
-            TotalThisMonth = thisMonth.Count,
-            TotalThisYear = thisYear.Count,
-            TotalClosed = allTickets
-                .Count(t => t.Status == TicketStatus.Closed),
-            TotalRejected = allTickets
-                .Count(t => t.Status == TicketStatus.Rejected),
-            TotalSlaBreached = allTickets
-                .Count(t => t.IsSlaBreached),
-            TotalCitizens = citizens.Count,
+        TicketStatus.Closed,
+        TicketStatus.PendingVerification
+    };
 
-            // ── Tỷ lệ ────────────────────────────────────
-            ClosedRate = allTickets.Count > 0
-                ? Math.Round(
-                    (double)allTickets
-                        .Count(t => t.Status == TicketStatus.Closed)
-                    / allTickets.Count * 100, 1)
-                : 0,
-
-            SlaComplianceRate = closedTickets.Count > 0
-                ? Math.Round(
-                    (double)closedTickets
-                        .Count(t => !t.IsSlaBreached)
-                    / closedTickets.Count * 100, 1)
-                : 0,
-
-            AvgResolutionHours = avgResolutionHours,
-
-            // ── Chi tiết ──────────────────────────────────
-            ByStatus = byStatus,
-            ByCategory = byCategory,
-            ByDepartment = byDepartment,
-            ByPriority = byPriority,
-
-            // ── Xu hướng 30 ngày ──────────────────────────
-            DailyTrend = allTickets
-                .Where(t => t.CreatedAt >= now.AddDays(-30))
-                .GroupBy(t => t.CreatedAt.Date)
-                .OrderBy(g => g.Key)
-                .Select(g => new
+        switch (period.ToLower())
+        {
+            case "week":
                 {
-                    Date = g.Key.ToString("yyyy-MM-dd"),
-                    Created = g.Count(),
-                    Closed = g.Count(t =>
-                        t.Status == TicketStatus.Closed),
-                    SlaBreached = g.Count(t =>
-                        t.IsSlaBreached)
-                })
-                .ToList(),
+                    // 7 ngày của tuần hiện tại (Monday → Sunday)
+                    var dayOfWeek = ((int)now.DayOfWeek + 6) % 7;
+                    var monday = now.Date.AddDays(-dayOfWeek);
+                    var dayLabels = new[]
+                    { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5",
+              "Thứ 6", "Thứ 7", "CN" };
 
-            // ── Xu hướng 12 tháng ─────────────────────────
-            MonthlyTrend = allTickets
-                .Where(t => t.CreatedAt >= now.AddMonths(-12))
-                .GroupBy(t => new
+                    return Enumerable.Range(0, 7).Select(i =>
+                    {
+                        var date = monday.AddDays(i);
+                        var dayTickets = allTickets
+                            .Where(t => t.CreatedAt.Date == date)
+                            .ToList();
+
+                        return (object)new
+                        {
+                            Label = dayLabels[i],
+                            Created = dayTickets.Count,
+                            Processed = dayTickets
+                                .Count(t => processedStatuses
+                                    .Contains(t.Status))
+                        };
+                    }).ToList();
+                }
+
+            case "quarter":
                 {
-                    t.CreatedAt.Year,
-                    t.CreatedAt.Month
-                })
-                .OrderBy(g => g.Key.Year)
-                .ThenBy(g => g.Key.Month)
-                .Select(g => new
+                    // 4 quý trong năm hiện tại
+                    return Enumerable.Range(1, 4).Select(q =>
+                    {
+                        var qStart = new DateTime(
+                            now.Year, (q - 1) * 3 + 1, 1,
+                            0, 0, 0, DateTimeKind.Utc);
+                        var qEnd = qStart.AddMonths(3);
+
+                        var qTickets = allTickets
+                            .Where(t => t.CreatedAt >= qStart
+                                     && t.CreatedAt < qEnd)
+                            .ToList();
+
+                        return (object)new
+                        {
+                            Label = $"Q{q}",
+                            Created = qTickets.Count,
+                            Processed = qTickets
+                                .Count(t => processedStatuses
+                                    .Contains(t.Status))
+                        };
+                    }).ToList();
+                }
+
+            default: // "month" → 12 tháng trong năm
                 {
-                    Month = $"{g.Key.Year}-{g.Key.Month:D2}",
-                    Created = g.Count(),
-                    Closed = g.Count(t =>
-                        t.Status == TicketStatus.Closed)
-                })
-                .ToList()
-        };
+                    return Enumerable.Range(1, 12).Select(m =>
+                    {
+                        var mStart = new DateTime(
+                            now.Year, m, 1,
+                            0, 0, 0, DateTimeKind.Utc);
+                        var mEnd = mStart.AddMonths(1);
+
+                        var mTickets = allTickets
+                            .Where(t => t.CreatedAt >= mStart
+                                     && t.CreatedAt < mEnd)
+                            .ToList();
+
+                        return (object)new
+                        {
+                            Label = $"T{m:D2}",  // T01, T02...T12
+                            Created = mTickets.Count,
+                            Processed = mTickets
+                                .Count(t => processedStatuses
+                                    .Contains(t.Status))
+                        };
+                    }).ToList();
+                }
+        }
     }
 
     // ══════════════════════════════════════════════════════

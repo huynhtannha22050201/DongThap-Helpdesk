@@ -67,6 +67,11 @@ public class DepartmentsController : ControllerBase
             data);
     }
 
+    [HttpGet("active")]
+    [Authorize(Roles = Roles.StaffOnly)]
+    public async Task<IActionResult> GetActive()
+    => Ok(await _service.GetActiveLightAsync());
+
     /// <summary>
     /// Lấy danh sách phòng ban có phân trang + lọc + thống kê
     /// </summary>

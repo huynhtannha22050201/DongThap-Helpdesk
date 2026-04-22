@@ -89,12 +89,52 @@ public class TicketService
         return await MapToResponseListAsync(tickets);
     }
 
-    public async Task<List<TicketActivity>>
-        GetActivitiesAsync(string ticketId)
+    public async Task<List<object>> GetActivitiesAsync(string ticketId)
     {
         var filter = Builders<TicketActivity>.Filter
             .Eq(a => a.TicketId, ticketId);
-        return await _activityRepo.GetByFilterAsync(filter);
+        var activities = await _activityRepo.GetByFilterAsync(filter);
+
+        var ticket = await _ticketRepo.GetByIdAsync(ticketId);
+
+        // Collect tất cả actorId duy nhất → batch query 1 lần
+        var actorIds = activities
+            .Where(a => !string.IsNullOrEmpty(a.ActorId))
+            .Select(a => a.ActorId!)
+            .Distinct()
+            .ToList();
+
+        // Query tất cả users liên quan trong 1 lần duy nhất
+        var actorMap = new Dictionary<string, string>();
+        if (actorIds.Any())
+        {
+            foreach (var actorId in actorIds)
+            {
+                var user = await _userRepo.GetByIdAsync(actorId);
+                Console.WriteLine($"[DEBUG] GetByIdAsync('{actorId}') → {(user != null ? user.FullName : "NULL")}");
+                if (user != null)
+                    actorMap[actorId] = user.FullName;
+            }
+        }
+        Console.WriteLine($"[DEBUG] actorMap count: {actorMap.Count}");
+
+        return activities.Select(a => (object)new
+        {
+            a.Id,
+            a.TicketId,
+            a.ActorId,
+            ActorName = !string.IsNullOrEmpty(a.ActorId) && actorMap.ContainsKey(a.ActorId)
+            ? actorMap[a.ActorId]
+            : a.ActionType == ActivityType.Created && ticket != null
+                ? ticket.ReporterName
+                : "Hệ thống",
+            ActionType = a.ActionType.ToString(),
+            OldStatus = a.OldStatus?.ToString(),
+            NewStatus = a.NewStatus?.ToString(),
+            a.Comment,
+            a.AttachmentUrls,
+            a.CreatedAt
+        }).ToList();
     }
 
     // ── UC01: Gửi phản ánh ───────────────────────────────
@@ -660,6 +700,27 @@ public class TicketService
         // Gửi SMS báo cáo được duyệt
         await _smsService.SendTicketApprovedAsync(
             ticket.ReporterPhone, ticket.TicketCode);
+    }
+
+    public async Task<(bool Success, string Message)>
+    AddCommentAsync(
+    string ticketId,
+    string actorId,
+    string comment)
+    {
+        var ticket = await _ticketRepo.GetByIdAsync(ticketId);
+        if (ticket == null)
+            return (false, "Không tìm thấy phản ánh");
+
+        await LogActivityAsync(
+            ticket.Id,
+            actorId,
+            ActivityType.Commented,
+            ticket.Status,
+            ticket.Status,  // Status không đổi — chỉ là ghi chú
+            comment);
+
+        return (true, "Thêm ghi chú thành công");
     }
 
     // ── Helper ─────────────────

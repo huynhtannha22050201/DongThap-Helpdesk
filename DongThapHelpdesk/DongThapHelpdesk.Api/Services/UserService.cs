@@ -127,6 +127,46 @@ public class UserService
         return (true, "Cập nhật thành công");
     }
 
+    public async Task<(bool Success, string Message)> DeleteUserAsync(string id)
+    {
+        var user = await _userRepo.GetByIdAsync(id);
+        if (user == null)
+        {
+            return (false, "Không tìm thấy người dùng trong hệ thống.");
+        }
+
+        // (Tùy chọn) Thêm logic kiểm tra: Không cho phép xóa Admin cuối cùng, 
+        // hoặc kiểm tra user này có đang giữ Ticket nào không trước khi xóa.
+
+        var isDeleted = await _userRepo.DeleteAsync(id);
+        if (isDeleted)
+        {
+            return (true, "Xóa cán bộ thành công.");
+        }
+
+        return (false, "Có lỗi xảy ra khi xóa cán bộ.");
+    }
+
+    public async Task<(bool Success, string Message, object Data)> GetPagedUsersAsync(int page, int pageSize, string search, string role, string departmentId, bool? isActive, string sortField, string sortDir)
+    {
+        var result = await _userRepo.GetPagedAsync(page, pageSize, search, role, departmentId, isActive, sortField, sortDir);
+        return (true, "Thành công", new
+        {
+            TotalItems = result.Total,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(result.Total / (double)pageSize),
+            Items = result.Items
+        });
+    }
+
+    public async Task<(bool Success, string Message, object Data)> GetUserStatsAsync()
+    {
+        var stats = await _userRepo.GetUserStatsAsync();
+        var distinctDepts = await _userRepo.CountDistinctDepartmentsAsync();
+        return (true, "Thành công", new { Total = stats.Total, Active = stats.Active, Locked = stats.Locked, Depts = distinctDepts });
+    }
+
     // ── Khóa/Mở khóa tài khoản ───────────────────────────
     public async Task<(bool Success, string Message)>
         ToggleLockAsync(string id)

@@ -100,7 +100,7 @@ public class FileUploadService
 
         // Tạo URL truy cập public
         var relativePath = Path.Combine(
-            _settings.UploadPath,
+            "uploads",  // Hardcode "uploads" thay vì dùng _settings.UploadPath
             subFolder,
             DateTime.UtcNow.ToString("yyyy/MM"),
             uniqueFileName)

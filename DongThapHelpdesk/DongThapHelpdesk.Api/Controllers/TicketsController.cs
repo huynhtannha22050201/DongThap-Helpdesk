@@ -23,7 +23,7 @@ public class TicketsController : ControllerBase
     // ══════════════════════════════════════════════════════
 
     [HttpGet]
-    [Authorize(Roles = Roles.DispatcherAndManager)]
+    [Authorize(Roles = Roles.StaffOnly)]
     public async Task<IActionResult> GetAll()
         => Ok(await _service.GetAllAsync());
 
@@ -293,6 +293,26 @@ public class TicketsController : ControllerBase
 
         var (success, message) = await _service.RateAsync(
             id, User.GetUserId(), request);
+
+        return success
+            ? Ok(new { message })
+            : BadRequest(new { message });
+    }
+
+    [HttpPost("{id}/comment")]
+    [Authorize(Roles = Roles.StaffOnly)]
+    public async Task<IActionResult> AddComment(
+    string id,
+    [FromBody] AddCommentRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Comment))
+            return BadRequest(new
+            {
+                message = "Vui lòng nhập nội dung ghi chú"
+            });
+
+        var (success, message) = await _service
+            .AddCommentAsync(id, User.GetUserId(), request.Comment);
 
         return success
             ? Ok(new { message })

@@ -51,6 +51,10 @@ public class AuthController : ControllerBase
             // Ghi nhớ → cookie sống 7 ngày
             cookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(7);
         }
+        else
+        {
+            cookieOptions.Expires = DateTimeOffset.UtcNow.AddHours(8);
+        }
 
         Response.Cookies.Append("access_token", result.Token!, cookieOptions);
 
